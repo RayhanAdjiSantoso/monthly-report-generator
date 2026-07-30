@@ -1,0 +1,10 @@
+# Sample/testing data — contains real campaign performance numbers,
+# must never be committed or deployed.
+data/
+*.xlsx
+*.xls
+*.csv
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db

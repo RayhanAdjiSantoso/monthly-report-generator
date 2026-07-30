@@ -1,0 +1,10 @@
+# Same intent as .gitignore, but enforced independently: Vercel does not
+# read .gitignore for files that are already untracked, and a future commit
+# mistake shouldn't be the only thing standing between this data and a
+# public deployment.
+data/
+*.xlsx
+*.xls
+*.csv
+.DS_Store
+Thumbs.db
