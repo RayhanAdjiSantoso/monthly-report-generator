@@ -802,10 +802,8 @@ function fmtTiktok(val,fmtType){
 function buildTiktokKPIRows(mOld,mCur){
   return TIKTOK_METRIC_DEFS.map(def=>{
     const vOld=mOld[def.key], vCur=mCur[def.key];
-    let deltaNum=null;
-    if(vOld!==undefined&&vCur!==undefined&&vOld!==0)deltaNum=((vCur-vOld)/Math.abs(vOld))*100;
+    const{deltaNum,deltaStr}=(vOld!==undefined&&vCur!==undefined)?computeDelta(vOld,vCur):{deltaNum:null,deltaStr:'—'};
     const cls=shopeeDeltaClass(deltaNum,def.sentiment);
-    const deltaStr=deltaNum===null?'—':(deltaNum>=0?'+':'')+deltaNum.toFixed(2)+'%';
     return{key:def.key,label:def.label,old:fmtTiktok(vOld,def.fmt),cur:fmtTiktok(vCur,def.fmt),deltaNum,delta:deltaStr,cls,sentiment:def.sentiment};
   });
 }
@@ -897,7 +895,7 @@ function updateTabBadge(tab,label){
 // ══════════════════════════════════════════════════════
 const DEFS={
   boostPost:    ['amount spent','profile visits','cost per profile visit'],
-  nonBoost:     ['amount spent','purchases','purchase conversion value','roas'],
+  nonBoost:     ['amount spent','purchases','purchases conversion value','roas'],
   nonBoostDemo: ['amount spent','cost per add to cart','cost per purchase','roas'],
   cpasOverall:  ['amount spent','purchases with shared','purchases conversion value for shared','purchase roas for shared'],
   cpasDemo:     ['amount spent','cost per atc','cost per purchase with shared','purchase roas for shared'],
@@ -908,7 +906,7 @@ const SKIP_COLS=['reporting starts','reporting ends','attribution setting','star
 const DIM_NAMES=['month','campaign name','age','gender'];
 const RATE_KW=['cost','cpm','cpc','cpa','cpp','ctr','ratio','rate','roas','frequency','per '];
 const RENAME_MAP=[
-  {match:'purchases conversion value for shared items only',label:'Revenue'},
+  {match:'purchases conversion value for shared items only',label:'Purchases Conversion Value'},
   {match:'purchase roas for shared items only',label:'ROAS'},
   {match:'purchases with shared items',label:'Purchases'},
   {match:'cost per purchase with shared',label:'Cost per Purchase'},
@@ -916,7 +914,7 @@ const RENAME_MAP=[
   {match:'adds to cart with shared items',label:'Add to Cart'},
   {match:'content views with shared items',label:'Content Views'},
   {match:'cost per content view with shared',label:'Cost per Content View'},
-  {match:'purchase conversion value',label:'Revenue'},
+  {match:'purchases conversion value',label:'Purchases Conversion Value'},
   {match:'purchases',label:'Purchases'},
   {match:'cost per purchase',label:'Cost per Purchase'},
   {match:'cost per add to cart',label:'Cost per ATC'},
@@ -978,6 +976,14 @@ const COST_PER_MAP=[
   {cost:'cost per thruplay',          denom:'thruplay'},
   {cost:'cpc (cost per link',         denom:'link click'},
 ];
+// CTR variants map to different click numerators — must match explicitly rather
+// than guess, since "Clicks (all)" / "Link clicks" / "Outbound clicks" are not
+// interchangeable.
+const CTR_MAP=[
+  {ctr:'ctr (link click-through rate)', click:'link click'},
+  {ctr:'outbound ctr',                  click:'outbound click'},
+  {ctr:'ctr (all)',                     click:'clicks (all)'},
+];
 function findDenomCol(rows,keyword){const hs=Object.keys(rows[0]||{});return hs.find(h=>h.toLowerCase().includes(keyword))||null;}
 function findSpentCol(rows){const hs=Object.keys(rows[0]||{});return hs.find(h=>h.toLowerCase().includes('amount spent'))||null;}
 function aggSum(rows,col){let s=0,found=false;rows.forEach(r=>{const v=parseNum(r[col]);if(v!==null){s+=v;found=true;}});return found?s:null;}
@@ -1017,7 +1023,24 @@ function agg(rows,col){
     if(spentCol&&revCol){const ts=aggSum(rows,spentCol),tr=aggSum(rows,revCol);if(ts!==null&&tr!==null&&ts!==0)return tr/ts;}
     return null;
   }
-  if(lc.includes('ctr')||lc.includes('ratio')||lc.includes('frequency')){let s=0,c=0;rows.forEach(r=>{const v=parseNum(r[col]);if(v!==null){s+=v;c++;}});return c?s/c:null;}
+  if(lc.includes('ctr')){
+    const hs=Object.keys(rows[0]||{});
+    const imprCol=hs.find(h=>h.toLowerCase().includes('impression'));
+    for(const map of CTR_MAP){
+      if(lc.includes(map.ctr)){
+        const clickCol=findDenomCol(rows,map.click);
+        if(imprCol&&clickCol){const ti=aggSum(rows,imprCol),tc=aggSum(rows,clickCol);if(ti!==null&&tc!==null&&ti!==0)return(tc/ti)*100;}
+        return null;
+      }
+    }
+    return null; // unmapped CTR variant — don't guess the numerator
+  }
+  // Ratio / Frequency: kept as simple row average — numerator/denominator for
+  // "ratio"-named columns are unmapped (too varied to guess safely), and Reach
+  // (Frequency's denominator) is a unique-user count that isn't additive across
+  // the campaign/age/gender/month breakdown rows this app works with, so summing
+  // it would double-count overlapping audiences and understate true frequency.
+  if(lc.includes('ratio')||lc.includes('frequency')){let s=0,c=0;rows.forEach(r=>{const v=parseNum(r[col]);if(v!==null){s+=v;c++;}});return c?s/c:null;}
   return aggSum(rows,col);
 }
 function fmt(val,col){
@@ -1032,6 +1055,22 @@ function fmt(val,col){
   if(val>=1000)return Math.round(val).toLocaleString('id-ID');
   if(val%1!==0)return val.toFixed(2);
   return String(Math.round(val));
+}
+// Shared Growth/Perubahan (%) calculation used by every platform (Meta, Shopee,
+// TikTok, Overview, Cost-per-X). Business rule for Previous=0:
+//   - Previous=0, Current=0  -> flat, "0%"
+//   - Previous=0, Current>0  -> no baseline to compare against, "New"
+//   - Previous=0, Current<0  -> not reachable by any metric in this app (all are
+//     non-negative), but treated as N/A defensively
+function computeDelta(vOld,vCur){
+  if(vOld===null||vOld===undefined||vCur===null||vCur===undefined)return{deltaNum:null,deltaStr:'—'};
+  if(vOld===0){
+    if(vCur===0)return{deltaNum:0,deltaStr:'0%'};
+    if(vCur>0)return{deltaNum:null,deltaStr:'New'};
+    return{deltaNum:null,deltaStr:'N/A'};
+  }
+  const deltaNum=((vCur-vOld)/Math.abs(vOld))*100;
+  return{deltaNum,deltaStr:(deltaNum>=0?'+':'')+deltaNum.toFixed(2)+'%'};
 }
 function fmtMonth(raw){
   if(!raw)return String(raw);
@@ -1187,10 +1226,8 @@ function buildOverviewKPITable(mOld,mCur,p1,p2){
   const rows=OVERVIEW_METRIC_DEFS.map(def=>{
     const vOld=mOld?mOld[def.key]:null;
     const vCur=mCur?mCur[def.key]:null;
-    let deltaNum=null;
-    if(vOld!==null&&vCur!==null&&vOld!==0)deltaNum=((vCur-vOld)/Math.abs(vOld))*100;
+    const{deltaNum,deltaStr}=(vOld!==null&&vCur!==null)?computeDelta(vOld,vCur):{deltaNum:null,deltaStr:'—'};
     const cls=shopeeDeltaClass(deltaNum,def.sentiment);
-    const deltaStr=deltaNum===null?'—':(deltaNum>=0?'+':'')+deltaNum.toFixed(2)+'%';
     const fmtVal=(v)=>v===null?'—':def.fmt==='rp'?'Rp'+Math.round(v).toLocaleString('id-ID'):Math.round(v).toLocaleString('id-ID');
     return`<tr>
       <td>${def.label}</td>
@@ -1328,10 +1365,8 @@ function shopeeDeltaClass(deltaNum,sentiment){
 function buildShopeeKPIRows(mOld,mCur){
   return SHOPEE_METRIC_DEFS.map(def=>{
     const vOld=mOld[def.key],vCur=mCur[def.key];
-    let deltaNum=null;
-    if(vOld!==undefined&&vCur!==undefined&&vOld!==0)deltaNum=((vCur-vOld)/Math.abs(vOld))*100;
+    const{deltaNum,deltaStr}=(vOld!==undefined&&vCur!==undefined)?computeDelta(vOld,vCur):{deltaNum:null,deltaStr:'—'};
     const cls=shopeeDeltaClass(deltaNum,def.sentiment);
-    const deltaStr=deltaNum===null?'—':(deltaNum>=0?'+':'')+deltaNum.toFixed(2)+'%';
     return{key:def.key,label:def.label,old:fmtShopee(vOld,def.fmt),cur:fmtShopee(vCur,def.fmt),deltaNum,delta:deltaStr,cls,sentiment:def.sentiment};
   });
 }
@@ -1653,10 +1688,8 @@ function deltaClass(deltaNum,col){
 function buildKPI(old,cur,cols){
   return cols.map(col=>{
     const v1=agg(old,col),v2=agg(cur,col);
-    let deltaNum=null;
-    if(v1!==null&&v2!==null&&v1!==0)deltaNum=((v2-v1)/Math.abs(v1))*100;
+    const{deltaNum,deltaStr}=(v1!==null&&v2!==null)?computeDelta(v1,v2):{deltaNum:null,deltaStr:'—'};
     const cls=deltaClass(deltaNum,col);
-    const deltaStr=deltaNum===null?'—':(deltaNum>=0?'+':'')+deltaNum.toFixed(2)+'%';
     return{col,val:fmt(v2,col),old:fmt(v1,col),delta:deltaStr,cls,deltaNum};
   }).filter(m=>m.val!=='—');
 }
@@ -1857,7 +1890,7 @@ function renderSection(secId,heading,badge,type,data,defCols,allCols,isShopee=fa
   const hClass=isShopee?'sec-heading shopee-heading':'sec-heading';
   return`<div class="sec-block">
     <div class="${hClass}">${heading}${badge?`<span class="sec-badge">${badge}</span>`:''}</div>
-    ${renderPicker(secId,defCols,allCols,type==='demo')}
+    ${renderPicker(secId,defCols,allCols,type==='demo',displayName)}
     <div id="content-${secId}" style="padding:0 1.4rem 1.4rem">${content}</div>
   </div>`;
 }
@@ -1874,10 +1907,8 @@ function buildCprRow(cprPair,srcOld,srcCur){
   const denomOld=aggSum(srcOld,cprPair.denom), denomCur=aggSum(srcCur,cprPair.denom);
   const cprOld=(denomOld&&denomOld!==0)?spentOld/denomOld:null;
   const cprCur=(denomCur&&denomCur!==0)?spentCur/denomCur:null;
-  let deltaNum=null;
-  if(cprOld&&cprCur&&cprOld!==0)deltaNum=((cprCur-cprOld)/Math.abs(cprOld))*100;
+  const{deltaNum,deltaStr:delta}=(cprOld!==null&&cprCur!==null)?computeDelta(cprOld,cprCur):{deltaNum:null,deltaStr:'—'};
   const cls=deltaNum===null?'delta-neutral':deltaNum>=0?'delta-bad':'delta-good';
-  const delta=deltaNum===null?'—':(deltaNum>=0?'+':'')+deltaNum.toFixed(2)+'%';
   return{
     label:cprPair.label||'Cost per Result',
     old:cprOld!==null?'Rp'+Math.round(cprOld).toLocaleString('id-ID'):'—',
