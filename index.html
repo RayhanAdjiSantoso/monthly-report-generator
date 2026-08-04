@@ -118,6 +118,9 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .sec-heading::before{content:'';width:3px;height:1em;background:linear-gradient(180deg,var(--acc),var(--cyan));border-radius:2px;flex-shrink:0}
 .sec-heading.shopee-heading::before{background:linear-gradient(180deg,var(--shopee),var(--shopee2))}
 .sec-badge{font-size:.62rem;font-family:var(--m);background:#fff;border:1px solid var(--border);border-radius:5px;padding:.15rem .55rem;color:var(--muted);font-weight:500;letter-spacing:.03em}
+.sec-download-btn{margin-left:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:4px;font-size:.62rem;font-family:var(--m);background:#fff;border:1px solid var(--border);border-radius:5px;padding:.2rem .55rem;color:var(--muted);font-weight:600;letter-spacing:.02em;cursor:pointer;transition:all .15s}
+.sec-download-btn:hover{color:var(--acc);border-color:var(--acc)}
+.sec-download-btn:disabled{opacity:.6;cursor:default}
 
 /* ── KPI Table ── */
 .kpi-table{width:100%;border-collapse:collapse}
@@ -160,10 +163,10 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .metric-picker-fixed{flex-wrap:nowrap;align-items:flex-start}
 .metric-picker-fixed .metric-picker-pills{display:flex;flex-wrap:wrap;gap:5px;flex:1;min-width:0}
 .metric-picker-fixed .add-metric-wrap{flex-shrink:0}
-/* Button now sits at the right edge of the row, so its dropdown must open
-   right-anchored (extending left) or it overflows past the container's
-   right edge and gets clipped by .sec-block's overflow:hidden. */
-.metric-picker-fixed .add-metric-select{left:auto;right:0;max-width:min(360px,90vw)}
+/* Horizontal/vertical placement is computed in JS (openDropdown) as
+   position:fixed, so it isn't clipped by .sec-block's overflow:hidden;
+   this just caps how wide it's allowed to grow. */
+.metric-picker-fixed .add-metric-select{max-width:min(360px,90vw)}
 .mpill{display:inline-flex;align-items:center;gap:4px;background:var(--s2);border:1.5px solid var(--border);border-radius:6px;padding:.22rem .6rem;font-size:.67rem;font-family:var(--m);cursor:pointer;transition:all .15s;user-select:none;color:var(--muted);font-weight:500}
 .mpill.on{background:#eef1fc;border-color:var(--acc);color:var(--acc)}
 .mpill input{display:none}
@@ -195,9 +198,12 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
   .sec-block{box-shadow:none}
 }
 
-/* Toggled during PDF export so interactive picker controls (which live inside
-   the same .sec-block as the report data) don't get captured into the PDF. */
+/* Toggled during PDF export (and single-section PNG export, which reuses the
+   same class) so interactive picker controls and the per-section download
+   button — which live inside the same .sec-block as the report data — don't
+   get captured into the exported image. */
 .pdf-export-mode .metric-picker{display:none!important}
+.pdf-export-mode .sec-download-btn{display:none!important}
 
 
 /* ── Period input ── */
@@ -1344,6 +1350,8 @@ const SHOPEE_METRIC_DEFS=[
   {key:'penjualanAds',  label:'Penjualan dari Ads',    fmt:'rp',    sentiment:'higher-better'},
   {key:'roas',          label:'ROAS',                  fmt:'roas',  sentiment:'higher-better'},
 ];
+const SHOPEE_LABEL_BY_KEY=Object.fromEntries(SHOPEE_METRIC_DEFS.map(d=>[d.key,d.label]));
+function shopeeLabelFor(key){return SHOPEE_LABEL_BY_KEY[key]||key;}
 
 function fmtShopee(val,fmtType){
   if(val===null||val===undefined)return'—';
@@ -1367,20 +1375,8 @@ function buildShopeeKPIRows(mOld,mCur){
     const vOld=mOld[def.key],vCur=mCur[def.key];
     const{deltaNum,deltaStr}=(vOld!==undefined&&vCur!==undefined)?computeDelta(vOld,vCur):{deltaNum:null,deltaStr:'—'};
     const cls=shopeeDeltaClass(deltaNum,def.sentiment);
-    return{key:def.key,label:def.label,old:fmtShopee(vOld,def.fmt),cur:fmtShopee(vCur,def.fmt),deltaNum,delta:deltaStr,cls,sentiment:def.sentiment};
+    return{key:def.key,col:def.key,label:def.label,old:fmtShopee(vOld,def.fmt),cur:fmtShopee(vCur,def.fmt),deltaNum,delta:deltaStr,cls,sentiment:def.sentiment};
   });
-}
-function buildShopeeKPITable(mOld,mCur,p1,p2){
-  const rows=buildShopeeKPIRows(mOld,mCur).map(r=>`<tr>
-      <td>${r.label}</td>
-      <td>${r.old}</td>
-      <td>${r.cur}</td>
-      <td class="${r.cls}">${r.delta}</td>
-    </tr>`).join('');
-  return`<table class="kpi-table">
-    <thead><tr><th></th><th>${p1}</th><th>${p2}</th><th>Changes</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
 }
 
 // ══════════════════════════════════════════════════════
@@ -1703,7 +1699,7 @@ function kpiTable(rows,p2){
 // Detailed section display identically to the built-in Overview metrics.
 function kpiTableWithPrev(rows,p1,p2){
   if(!rows.length)return'<div class="empty-note">Tidak ada data.</div>';
-  const trs=rows.map(r=>`<tr><td>${escapeHtml(displayName(r.col))}</td><td>${r.old}</td><td>${r.val}</td><td class="${r.cls}">${r.delta}</td></tr>`).join('');
+  const trs=rows.map(r=>`<tr><td>${escapeHtml(r.label||displayName(r.col))}</td><td>${r.old}</td><td>${r.val!==undefined?r.val:r.cur}</td><td class="${r.cls}">${r.delta}</td></tr>`).join('');
   return`<table class="kpi-table"><thead><tr><th></th><th>${p1||''}</th><th>${p2||''}</th><th>Changes</th></tr></thead><tbody>${trs}</tbody></table>`;
 }
 
@@ -1777,13 +1773,52 @@ function demoTable(rows,dimCol,cols,p2,secId){
 // ══════════════════════════════════════════════════════
 const sectionReg={};
 document.addEventListener('click',e=>{
-  if(!e.target.closest('.add-metric-wrap'))
-    document.querySelectorAll('.add-metric-select.open').forEach(el=>el.classList.remove('open'));
+  if(!e.target.closest('.add-metric-wrap'))closeAllDropdowns();
 });
+// Dropdown only closes on real page scroll, not on scrolling its own option
+// list (whose target is the dropdown element itself, not the document).
+window.addEventListener('scroll',e=>{
+  if(e.target===document)closeAllDropdowns();
+},true);
+window.addEventListener('resize',closeAllDropdowns);
+function closeAllDropdowns(){
+  document.querySelectorAll('.add-metric-select.open').forEach(closeDropdown);
+}
+function closeDropdown(el){
+  el.classList.remove('open');
+  el.style.position='';el.style.top='';el.style.bottom='';el.style.left='';el.style.maxHeight='';
+}
+// Opens the dropdown as position:fixed, anchored via JS to the trigger's
+// on-screen position — .add-metric-select is otherwise a descendant of
+// .sec-block, whose overflow:hidden (needed for its rounded corners) clips
+// any absolutely-positioned popup that extends past the card's edge. Since
+// the "+ Tambah metrik" button usually sits near the bottom of the card,
+// that clipping used to cut the list down to just 1-2 visible options.
+// position:fixed escapes that clip (no ancestor here uses transform/filter,
+// so its containing block is the viewport, not .sec-block).
+function openDropdown(el){
+  const wrap=el.closest('.add-metric-wrap');
+  if(!wrap)return;
+  el.classList.add('open');
+  const rect=wrap.getBoundingClientRect();
+  const margin=10;
+  const spaceBelow=window.innerHeight-rect.bottom-margin;
+  const spaceAbove=rect.top-margin;
+  const openUp=spaceBelow<160&&spaceAbove>spaceBelow;
+  el.style.position='fixed';
+  el.style.maxHeight=Math.max(140,Math.min(320,openUp?spaceAbove:spaceBelow))+'px';
+  if(openUp){el.style.bottom=(window.innerHeight-rect.top+5)+'px';el.style.top='';}
+  else{el.style.top=(rect.bottom+5)+'px';el.style.bottom='';}
+  const w=el.offsetWidth; // forces layout so width is known before clamping
+  let left=rect.left;
+  if(left+w>window.innerWidth-margin)left=Math.max(margin,window.innerWidth-margin-w);
+  el.style.left=left+'px';
+}
 function toggleDrop(id){
   const el=document.getElementById(id);
-  if(el.classList.contains('open'))el.classList.remove('open');
-  else{document.querySelectorAll('.add-metric-select.open').forEach(e=>e.classList.remove('open'));el.classList.add('open');}
+  const wasOpen=el.classList.contains('open');
+  closeAllDropdowns();
+  if(!wasOpen)openDropdown(el);
 }
 function getActivePills(secId){
   const el=document.getElementById('picker-'+secId);if(!el)return[];
@@ -1918,15 +1953,16 @@ function buildCprRow(cprPair,srcOld,srcCur){
 }
 
 // ── Overview + Detailed card renderer ─────────────────
-function renderOverviewDetailedCard(secId, heading, badge, overviewRows, detailedRows, allCols, p1, p2, srcOld, srcCur, cprPair){
+function renderOverviewDetailedCard(secId, heading, badge, overviewRows, detailedRows, allCols, p1, p2, srcOld, srcCur, cprPair, labelFn, headingClass){
   if(!overviewRows.length && !detailedRows.length) return '';
+  const resolveLabel=labelFn||displayName;
 
   // Overview table (fixed, no picker) — shows both periods so they're
   // comparable at a glance without opening Detailed.
   let ovTrs = overviewRows.map(r=>`<tr>
-    <td>${escapeHtml(displayName(r.col))}</td>
+    <td>${escapeHtml(r.label||resolveLabel(r.col))}</td>
     <td>${r.old}</td>
-    <td>${r.val}</td>
+    <td>${r.val!==undefined?r.val:r.cur}</td>
     <td class="${r.cls}">${r.delta}</td>
   </tr>`).join('');
   // Append computed cost-per row (works for all industries)
@@ -1950,10 +1986,10 @@ function renderOverviewDetailedCard(secId, heading, badge, overviewRows, detaile
   const detSecId = secId+'-det';
   sectionReg[secId] = {type:'kpi-src', old:srcOld||[], cur:srcCur||[]};
   sectionReg[detSecId] = {type:'kpi-prebuilt', rows: detailedRows, allCols, p1, p2};
-  const pickerHtml = renderPicker(detSecId,[],allCols,true,displayName);
+  const pickerHtml = renderPicker(detSecId,[],allCols,true,resolveLabel);
 
   return `<div class="sec-block">
-    <div class="sec-heading">${heading}${badge?`<span class="sec-badge">${badge}</span>`:''}</div>
+    <div class="sec-heading${headingClass?' '+headingClass:''}">${heading}${badge?`<span class="sec-badge">${badge}</span>`:''}</div>
     <div class="sub-table-label overview-label">Overview</div>
     <div style="padding:0 1.4rem .8rem">${ovTable}</div>
     <div class="sub-table-divider"></div>
@@ -2029,14 +2065,24 @@ function generate(){
       const defCpasRM=matchDef(DEFS.cpasRM,cAllCols);
       const cpasGrpOld=groupByCamp(cOld,cCampCol,['NV','RM']);
       const cpasGrpCur=groupByCamp(cCur,cCampCol,['NV','RM']);
+      // CPAS Overall/NV/RM: Overview + Detailed cards, same pattern as
+      // Meta's Boost Post / Non-Boost Post (fixed default metrics up top,
+      // "+ Tambah metrik" picker below for anything else).
       if(defCpasOverall.length){
-        html+=renderSection('cpas-overall','CPAS Marketplace','Overall','kpi',{old:cOld,cur:cCur,p1,p2},defCpasOverall,cAllCols);
-        buildKPI(cOld,cCur,defCpasOverall).forEach(r=>metaKpis.push(toSummaryKpi({...r,label:'CPAS · '+displayName(r.col)})));
+        const cpasOvRows=buildKPI(cOld,cCur,defCpasOverall);
+        html+=renderOverviewDetailedCard('cpas-overall','CPAS Marketplace','Overall',cpasOvRows,buildKPI(cOld,cCur,cAllCols),cAllCols,p1,p2);
+        cpasOvRows.forEach(r=>metaKpis.push(toSummaryKpi({...r,label:'CPAS · '+displayName(r.col)})));
       }
       if(defCpasDemo.length&&cAgeCol)html+=renderSection('cpas-age','CPAS Marketplace · Age Breakdown',`data ${p2}`,'demo',{rows:cCur,dimCol:cAgeCol,p2},defCpasDemo,cAllCols);
       if(defCpasDemo.length&&cGenderCol)html+=renderSection('cpas-gender','CPAS Marketplace · Gender Breakdown',`data ${p2}`,'demo',{rows:cCur,dimCol:cGenderCol,p2},defCpasDemo,cAllCols);
-      if(defCpasNV.length)html+=renderSection('cpas-nv','CPAS Marketplace · NV','New Visitor','kpi',{old:cpasGrpOld['NV']||[],cur:cpasGrpCur['NV']||[],p1,p2},defCpasNV,cAllCols);
-      if(defCpasRM.length)html+=renderSection('cpas-rm','CPAS Marketplace · RM','Retargeting','kpi',{old:cpasGrpOld['RM']||[],cur:cpasGrpCur['RM']||[],p1,p2},defCpasRM,cAllCols);
+      if(defCpasNV.length){
+        const nvOld=cpasGrpOld['NV']||[],nvCur=cpasGrpCur['NV']||[];
+        html+=renderOverviewDetailedCard('cpas-nv','CPAS Marketplace · NV','New Visitor',buildKPI(nvOld,nvCur,defCpasNV),buildKPI(nvOld,nvCur,cAllCols),cAllCols,p1,p2);
+      }
+      if(defCpasRM.length){
+        const rmOld=cpasGrpOld['RM']||[],rmCur=cpasGrpCur['RM']||[];
+        html+=renderOverviewDetailedCard('cpas-rm','CPAS Marketplace · RM','Retargeting',buildKPI(rmOld,rmCur,defCpasRM),buildKPI(rmOld,rmCur,cAllCols),cAllCols,p1,p2);
+      }
     }
     platformState.meta={done:true,error:null,data:{period:{old:p1,cur:p2},kpis:metaKpis}};
    }catch(err){
@@ -2067,12 +2113,13 @@ function generate(){
     if(!periodLabel){periodLabel=p2;metaLabel=`vs ${p1}`;}
     else{metaLabel+=` · Shopee vs ${p1}`;}
 
-    // Build Shopee KPI table manually (fixed metrics)
-    const shopeeTableHTML=buildShopeeKPITable(mOld,mCur,p1,p2);
-    html+=`<div class="sec-block">
-      <div class="sec-heading shopee-heading">Shopee Ads <span class="sec-badge">Iklan Toko + Iklan Produk</span></div>
-      <div style="padding:0 1.4rem 1.4rem">${shopeeTableHTML}</div>
-    </div>`;
+    // Shopee Ads: Overview (fixed default metrics) + Detailed (add-on picker),
+    // same pattern as Meta's Boost Post card.
+    const shopeeAllRows=buildShopeeKPIRows(mOld,mCur);
+    const shopeeOvKeys=['biaya','produkTerjual','aov','roas'];
+    const shopeeOvRows=shopeeAllRows.filter(r=>shopeeOvKeys.includes(r.col));
+    const shopeeAllKeys=SHOPEE_METRIC_DEFS.map(d=>d.key);
+    html+=renderOverviewDetailedCard('shopee-ads','Shopee Ads','Iklan Toko + Iklan Produk',shopeeOvRows,shopeeAllRows,shopeeAllKeys,p1,p2,null,null,null,shopeeLabelFor,'shopee-heading');
 
     // Product Overview section
     if(overviewFiles['overview-old']&&overviewFiles['overview-cur']){
@@ -2123,6 +2170,7 @@ function generate(){
   document.getElementById('r-period').textContent=periodLabel;
   document.getElementById('r-meta').textContent=`${metaLabel} · Generated ${new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}`;
   document.getElementById('r-body').innerHTML=html;
+  attachSectionDownloadButtons(document.getElementById('r-body'));
   document.getElementById('report').style.display='block';
   document.getElementById('report').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -2287,6 +2335,7 @@ function renderSummaryOverview(){
   if(!container)return;
   const allDone=PLATFORM_CONFIG.every(p=>platformState[p.key].done);
   container.innerHTML=allDone?renderSummaryContent(computeSummaryInsights()):renderSummaryPending();
+  attachSectionDownloadButtons(container);
 }
 
 
@@ -2429,6 +2478,61 @@ function downloadReportPDF(btn){
 }
 function downloadSummaryPDF(btn){
   exportElementToPDF(document.getElementById('summary-container'),'Performance Report.pdf',btn);
+}
+
+// ══════════════════════════════════════════════════════
+// PER-SECTION PNG EXPORT — adds a small "⬇ PNG" button to every
+// .sec-heading (Meta/Shopee/TikTok/Summary alike) so a single card can be
+// downloaded as an image on its own, independent of the full-report PDF.
+// ══════════════════════════════════════════════════════
+
+function attachSectionDownloadButtons(rootEl){
+  if(!rootEl)return;
+  rootEl.querySelectorAll('.sec-block > .sec-heading').forEach(h=>{
+    if(h.querySelector('.sec-download-btn'))return;
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='sec-download-btn';
+    btn.title='Download PNG';
+    btn.textContent='⬇ PNG';
+    btn.onclick=e=>{e.stopPropagation();downloadSectionPNG(btn);};
+    h.appendChild(btn);
+  });
+}
+
+function sanitizeFilename(name){
+  return name.replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,' ').trim();
+}
+
+async function downloadSectionPNG(btn){
+  const block=btn.closest('.sec-block');
+  if(!block)return;
+  if(typeof html2canvas==='undefined'){
+    alert('Modul PNG gagal dimuat. Periksa koneksi internet lalu coba lagi.');
+    return;
+  }
+  const heading=block.querySelector('.sec-heading');
+  const title=heading?(heading.childNodes[0]?.textContent||'').trim():'Section';
+  const badge=heading?.querySelector('.sec-badge')?.textContent.trim();
+  const filename=sanitizeFilename(`${title||'Section'}${badge?' - '+badge:''}`)+'.png';
+
+  const originalHtml=btn.innerHTML;
+  btn.disabled=true;
+  document.body.classList.add('pdf-export-mode');
+  try{
+    const canvas=await html2canvas(block,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    const link=document.createElement('a');
+    link.download=filename;
+    link.href=canvas.toDataURL('image/png');
+    link.click();
+  }catch(err){
+    console.error(err);
+    alert('Gagal membuat gambar: '+err.message);
+  }finally{
+    document.body.classList.remove('pdf-export-mode');
+    btn.disabled=false;
+    btn.innerHTML=originalHtml;
+  }
 }
 
 updateSummaryBadge();
