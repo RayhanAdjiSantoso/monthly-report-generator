@@ -174,6 +174,8 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .mpill:hover .mpill-x{opacity:1}
 .mpill-add{background:transparent;border:1.5px dashed var(--border);color:var(--muted2)}
 .mpill-add:hover{border-color:var(--cyan);color:var(--acc)}
+.mpill-clear{background:transparent;border:1.5px dashed var(--border);color:var(--muted2);flex-shrink:0}
+.mpill-clear:hover{border-color:#e5484d;color:#e5484d}
 .add-metric-wrap{position:relative;display:inline-block}
 .add-metric-select{position:absolute;top:100%;left:0;z-index:100;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;min-width:260px;max-height:220px;overflow-y:auto;display:none;box-shadow:0 8px 30px rgba(30,62,184,.12);margin-top:5px}
 .add-metric-select.open{display:block}
@@ -181,6 +183,8 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .add-metric-opt:hover{background:var(--s2);color:var(--acc)}
 .add-metric-opt-check{display:flex;align-items:center;gap:8px}
 .add-metric-opt-check input{cursor:pointer;flex-shrink:0}
+.add-metric-opt-all{font-weight:700;color:var(--acc)}
+.add-metric-divider{height:1px;background:var(--border);margin:.2rem 0}
 
 
 .ptab.tiktok-tab.active{border-color:var(--tiktok);background:#f0f0f0;color:var(--tiktok)}
@@ -279,8 +283,10 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .summary-plat-card{border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;background:var(--surface)}
 .summary-plat-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.15rem}
 .summary-plat-period{font-size:.68rem;color:var(--muted);font-family:var(--m);margin-bottom:.7rem}
-.summary-plat-kpi{display:flex;justify-content:space-between;gap:8px;font-size:.78rem;padding:.35rem 0;border-top:1px solid var(--border)}
+.summary-plat-kpi{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-size:.78rem;padding:.35rem 0;border-top:1px solid var(--border)}
 .summary-plat-kpi span:first-child{color:var(--muted)}
+.summary-plat-kpi-val{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex-shrink:0}
+.summary-plat-kpi-delta{font-family:var(--m);font-size:.68rem}
 
 .insight-list{list-style:none;display:flex;flex-direction:column;gap:9px;padding:1rem 1.4rem 1.4rem;margin:0}
 .insight-item{display:flex;gap:10px;align-items:flex-start;font-size:.82rem;color:var(--text);line-height:1.5}
@@ -1853,14 +1859,37 @@ const pickerAllCols={};
 // Optional display-name mapper per multi-select picker (raw column name stays the
 // underlying value/key everywhere; only the visible label changes).
 const pickerLabelFn={};
+// Shows/hides the "Pilih Semua" row + divider and the "Semua metrik sudah
+// ditambahkan" placeholder depending on whether any addable options remain —
+// called after any add/remove so the dropdown never shows a dead "Pilih
+// Semua" row once nothing is left to add.
+function refreshDropdownEmptyState(secId){
+  const dropdown=document.getElementById('drop-'+secId);
+  if(!dropdown)return;
+  const hasExtras=!!dropdown.querySelector('[data-col]');
+  const allBtn=dropdown.querySelector('.add-metric-opt-all');
+  const divider=dropdown.querySelector('.add-metric-divider');
+  if(allBtn)allBtn.style.display=hasExtras?'':'none';
+  if(divider)divider.style.display=hasExtras?'':'none';
+  let placeholder=dropdown.querySelector('.add-metric-empty');
+  if(!hasExtras){
+    if(!placeholder){
+      placeholder=document.createElement('div');
+      placeholder.className='add-metric-opt add-metric-empty';
+      placeholder.style.color='var(--muted)';
+      placeholder.textContent='Semua metrik sudah ditambahkan';
+      dropdown.appendChild(placeholder);
+    }
+  }else if(placeholder){
+    placeholder.remove();
+  }
+}
 function removeMetric(pillEl,secId){
   const col=pillEl.dataset.col;
   const dropId='drop-'+secId;
   pillEl.remove();
   const dropdown=document.getElementById(dropId);
   if(dropdown){
-    const placeholder=[...dropdown.children].find(c=>!c.dataset.col);
-    if(placeholder)placeholder.remove();
     const optHtml=buildMultiSelectOptionHtml(secId,col,dropId,pickerLabelFn[secId]);
     const order=pickerAllCols[secId]||[];
     const idx=order.indexOf(col);
@@ -1871,11 +1900,12 @@ function removeMetric(pillEl,secId){
     }
     if(nextSibling)nextSibling.insertAdjacentHTML('beforebegin',optHtml);
     else dropdown.insertAdjacentHTML('beforeend',optHtml);
+    refreshDropdownEmptyState(secId);
   }
   refreshSection(secId);
 }
 function addMetric(secId,col,dropId,keepOpen){
-  if(!keepOpen)document.getElementById(dropId).classList.remove('open');
+  if(!keepOpen)closeDropdown(document.getElementById(dropId));
   const picker=document.getElementById('picker-'+secId);
   // Pickers with a dedicated pills sub-container (multi-select ones) append there so
   // the "+ Tambah metrik" button never shifts position as pills are added/removed.
@@ -1891,6 +1921,34 @@ function addMetric(secId,col,dropId,keepOpen){
   else picker.insertBefore(pill,picker.querySelector('.add-metric-wrap'));
   const opt=document.getElementById(dropId).querySelector(`[data-col="${CSS.escape(col)}"]`);
   if(opt)opt.remove();
+  refreshDropdownEmptyState(secId);
+  refreshSection(secId);
+}
+// "Pilih Semua" — adds every not-yet-active metric in one click, and also
+// turns on any default pills the user had toggled off, so the picker ends
+// up fully selected regardless of how items got into their current state.
+function selectAllMetrics(secId){
+  const dropId='drop-'+secId;
+  document.querySelectorAll(`#pills-${secId} .mpill:not(.on)`).forEach(p=>{
+    const cb=p.querySelector('input');if(cb)cb.checked=true;
+    p.classList.add('on');
+  });
+  (pickerAllCols[secId]||[]).forEach(col=>{
+    const opt=document.getElementById(dropId)?.querySelector(`[data-col="${CSS.escape(col)}"]`);
+    if(opt)addMetric(secId,col,dropId,true);
+  });
+  closeDropdown(document.getElementById(dropId));
+  refreshSection(secId);
+}
+// "Hapus Semua" — the inverse: removes every dynamically-added pill (handing
+// it back to the dropdown) and turns off any default pills, resetting the
+// picker to empty in one click.
+function clearAllMetrics(secId){
+  document.querySelectorAll(`#picker-${secId} .mpill-removable`).forEach(p=>removeMetric(p,secId));
+  document.querySelectorAll(`#picker-${secId} .mpill.on`).forEach(p=>{
+    const cb=p.querySelector('input');if(cb)cb.checked=false;
+    p.classList.remove('on');
+  });
   refreshSection(secId);
 }
 function renderPicker(secId,activeCols,allCols,multiSelect=false,labelFn){
@@ -1910,10 +1968,16 @@ function renderPicker(secId,activeCols,allCols,multiSelect=false,labelFn){
     const label=labelFn?labelFn(c):c;
     return`<div class="add-metric-opt" data-col="${escapeHtml(c)}" onclick="addMetric('${secId}','${escCol}','${dropId}')">${escapeHtml(label)}</div>`;
   }).join('');
-  const addWrapHtml=`<div class="add-metric-wrap"><div class="mpill mpill-add" onclick="toggleDrop('${dropId}')">+ Tambah metrik</div><div class="add-metric-select" id="${dropId}">${opts||'<div class="add-metric-opt" style="color:var(--muted)">Semua metrik sudah ditambahkan</div>'}</div></div>`;
+  // "Pilih Semua" sits above the individual options, hidden automatically once
+  // nothing's left to add (see refreshDropdownEmptyState).
+  const selectAllHtml=(multiSelect&&extras.length)
+    ?`<div class="add-metric-opt add-metric-opt-all" onclick="selectAllMetrics('${secId}')">✓ Pilih Semua Metrik</div><div class="add-metric-divider"></div>`
+    :'';
+  const addWrapHtml=`<div class="add-metric-wrap"><div class="mpill mpill-add" onclick="toggleDrop('${dropId}')">+ Tambah metrik</div><div class="add-metric-select" id="${dropId}">${selectAllHtml}${opts||'<div class="add-metric-opt add-metric-empty" style="color:var(--muted)">Semua metrik sudah ditambahkan</div>'}</div></div>`;
+  const clearAllHtml=multiSelect?`<div class="mpill mpill-clear" onclick="clearAllMetrics('${secId}')" title="Hapus semua metrik">✕ Hapus Semua</div>`:'';
   // multiSelect pickers keep the pills in their own wrapping sub-container so the
   // "+ Tambah metrik" button stays fixed in place as pills are added/removed.
-  if(multiSelect)return`<div class="metric-picker metric-picker-fixed" id="picker-${secId}"><div class="metric-picker-pills" id="pills-${secId}">${pills}</div>${addWrapHtml}</div>`;
+  if(multiSelect)return`<div class="metric-picker metric-picker-fixed" id="picker-${secId}"><div class="metric-picker-pills" id="pills-${secId}">${pills}</div>${addWrapHtml}${clearAllHtml}</div>`;
   return`<div class="metric-picker" id="picker-${secId}">${pills}${addWrapHtml}</div>`;
 }
 function renderSection(secId,heading,badge,type,data,defCols,allCols,isShopee=false){
@@ -2010,6 +2074,8 @@ function generate(){
   if(activeTab==='meta'&&files.meta){
    try{
     const metaKpis=[];
+    const cpasKpis=[];
+    const metaSpend={};
     const mRows=files.meta;
     const mMonthCol=findCol(mRows,['month']);
     const mCampCol=findCol(mRows,['campaign']);
@@ -2021,12 +2087,13 @@ function generate(){
     periodLabel=p2; metaLabel=`vs ${p1}`;
     const mDimCols=[mMonthCol,mCampCol,mAgeCol,mGenderCol].filter(Boolean);
     const mAllCols=withCpmCol(hdrs.meta.filter(h=>isNumericCol(h,mRows)&&!mDimCols.includes(h)));
-    const isBoostRow=r=>{const v=String(r[mCampCol]||'').toLowerCase();return v.includes('profile visit')||/\bpv\b/.test(v);};
+    const isBoostRow=r=>{const v=String(r[mCampCol]||'').toLowerCase();return v.includes('profile visit')||v.includes('instagram post')||/\bpv\b/.test(v);};
     const mBoostOld=mOld.filter(r=>isBoostRow(r)),mBoostCur=mCur.filter(r=>isBoostRow(r));
     const mNonOld=mOld.filter(r=>!isBoostRow(r)),mNonCur=mCur.filter(r=>!isBoostRow(r));
     const hasNonBoost=mNonOld.length>0||mNonCur.length>0;
     const hasBoost=mBoostOld.length>0||mBoostCur.length>0;
     const ovDefs=getOverviewDefs(metaIndustry,mAllCols);
+    const mSpentCol=mAllCols.find(c=>c.toLowerCase().includes('amount spent'));
 
     // ── Boost Post: Overview + Detailed
     if(hasBoost){
@@ -2036,6 +2103,7 @@ function generate(){
       boostOvRows.forEach(r=>metaKpis.push(toSummaryKpi({...r,label:'Boost Post · '+displayName(r.col)})));
       const boostCpr=buildCprRow(ovDefs.boost.cprPair,mBoostOld,mBoostCur);
       if(boostCpr)metaKpis.push(toSummaryKpi({...boostCpr,label:'Boost Post · '+boostCpr.label}));
+      if(mSpentCol)metaSpend.boost={old:agg(mBoostOld,mSpentCol),cur:agg(mBoostCur,mSpentCol)};
     }
 
     // ── Non-Boost Post: Overview + Detailed
@@ -2046,6 +2114,7 @@ function generate(){
       mainOvRows.forEach(r=>metaKpis.push(toSummaryKpi({...r,label:'Non-Boost Post · '+displayName(r.col)})));
       const mainCpr=buildCprRow(ovDefs.main.cprPair,mNonOld,mNonCur);
       if(mainCpr)metaKpis.push(toSummaryKpi({...mainCpr,label:'Non-Boost Post · '+mainCpr.label}));
+      if(mSpentCol)metaSpend.nonboost={old:agg(mNonOld,mSpentCol),cur:agg(mNonCur,mSpentCol)};
     }
 
     // ── Age + Gender breakdown
@@ -2065,26 +2134,45 @@ function generate(){
       const defCpasRM=matchDef(DEFS.cpasRM,cAllCols);
       const cpasGrpOld=groupByCamp(cOld,cCampCol,['NV','RM']);
       const cpasGrpCur=groupByCamp(cCur,cCampCol,['NV','RM']);
+      const cSpentCol=cAllCols.find(c=>c.toLowerCase().includes('amount spent'));
       // CPAS Overall/NV/RM: Overview + Detailed cards, same pattern as
       // Meta's Boost Post / Non-Boost Post (fixed default metrics up top,
-      // "+ Tambah metrik" picker below for anything else).
+      // "+ Tambah metrik" picker below for anything else). Each also feeds
+      // its own line into cpasKpis (shown as a dedicated "CPAS Marketplace"
+      // card in the Summary tab) besides the shared metaKpis feed.
       if(defCpasOverall.length){
         const cpasOvRows=buildKPI(cOld,cCur,defCpasOverall);
         html+=renderOverviewDetailedCard('cpas-overall','CPAS Marketplace','Overall',cpasOvRows,buildKPI(cOld,cCur,cAllCols),cAllCols,p1,p2);
-        cpasOvRows.forEach(r=>metaKpis.push(toSummaryKpi({...r,label:'CPAS · '+displayName(r.col)})));
+        cpasOvRows.forEach(r=>{
+          metaKpis.push(toSummaryKpi({...r,label:'CPAS Marketplace · '+displayName(r.col)}));
+          cpasKpis.push(toSummaryKpi({...r,label:'Overall · '+displayName(r.col)}));
+        });
+        if(cSpentCol)metaSpend.cpasOverall={old:agg(cOld,cSpentCol),cur:agg(cCur,cSpentCol)};
       }
       if(defCpasDemo.length&&cAgeCol)html+=renderSection('cpas-age','CPAS Marketplace · Age Breakdown',`data ${p2}`,'demo',{rows:cCur,dimCol:cAgeCol,p2},defCpasDemo,cAllCols);
       if(defCpasDemo.length&&cGenderCol)html+=renderSection('cpas-gender','CPAS Marketplace · Gender Breakdown',`data ${p2}`,'demo',{rows:cCur,dimCol:cGenderCol,p2},defCpasDemo,cAllCols);
       if(defCpasNV.length){
         const nvOld=cpasGrpOld['NV']||[],nvCur=cpasGrpCur['NV']||[];
-        html+=renderOverviewDetailedCard('cpas-nv','CPAS Marketplace · NV','New Visitor',buildKPI(nvOld,nvCur,defCpasNV),buildKPI(nvOld,nvCur,cAllCols),cAllCols,p1,p2);
+        const nvOvRows=buildKPI(nvOld,nvCur,defCpasNV);
+        html+=renderOverviewDetailedCard('cpas-nv','CPAS Marketplace · NV','New Visitor',nvOvRows,buildKPI(nvOld,nvCur,cAllCols),cAllCols,p1,p2);
+        nvOvRows.forEach(r=>{
+          metaKpis.push(toSummaryKpi({...r,label:'CPAS Marketplace · NV · '+displayName(r.col)}));
+          cpasKpis.push(toSummaryKpi({...r,label:'NV · '+displayName(r.col)}));
+        });
+        if(cSpentCol)metaSpend.cpasNV={old:agg(nvOld,cSpentCol),cur:agg(nvCur,cSpentCol)};
       }
       if(defCpasRM.length){
         const rmOld=cpasGrpOld['RM']||[],rmCur=cpasGrpCur['RM']||[];
-        html+=renderOverviewDetailedCard('cpas-rm','CPAS Marketplace · RM','Retargeting',buildKPI(rmOld,rmCur,defCpasRM),buildKPI(rmOld,rmCur,cAllCols),cAllCols,p1,p2);
+        const rmOvRows=buildKPI(rmOld,rmCur,defCpasRM);
+        html+=renderOverviewDetailedCard('cpas-rm','CPAS Marketplace · RM','Retargeting',rmOvRows,buildKPI(rmOld,rmCur,cAllCols),cAllCols,p1,p2);
+        rmOvRows.forEach(r=>{
+          metaKpis.push(toSummaryKpi({...r,label:'CPAS Marketplace · RM · '+displayName(r.col)}));
+          cpasKpis.push(toSummaryKpi({...r,label:'RM · '+displayName(r.col)}));
+        });
+        if(cSpentCol)metaSpend.cpasRM={old:agg(rmOld,cSpentCol),cur:agg(rmCur,cSpentCol)};
       }
     }
-    platformState.meta={done:true,error:null,data:{period:{old:p1,cur:p2},kpis:metaKpis}};
+    platformState.meta={done:true,error:null,data:{period:{old:p1,cur:p2},kpis:metaKpis,cpasKpis,spend:metaSpend}};
    }catch(err){
     platformState.meta={done:false,error:err.message,data:null};
     console.error('Meta summary capture error',err);
@@ -2133,7 +2221,7 @@ function generate(){
     }
 
     const shopeeKpis=buildShopeeKPIRows(mOld,mCur).map(toSummaryKpi);
-    platformState.shopee={done:true,error:null,data:{period:{old:p1,cur:p2},kpis:shopeeKpis}};
+    platformState.shopee={done:true,error:null,data:{period:{old:p1,cur:p2},kpis:shopeeKpis,spend:{ads:{old:mOld.biaya,cur:mCur.biaya}}}};
    }catch(err){
     platformState.shopee={done:false,error:err.message,data:null};
     console.error('Shopee summary capture error',err);
@@ -2158,7 +2246,7 @@ function generate(){
     </div>`;
 
     const tiktokKpis=buildTiktokKPIRows(mOld,mCur).map(toSummaryKpi);
-    platformState.tiktok={done:true,error:null,data:{period:{old:p1,cur:p2},kpis:tiktokKpis}};
+    platformState.tiktok={done:true,error:null,data:{period:{old:p1,cur:p2},kpis:tiktokKpis,spend:{overall:{old:mOld.cost,cur:mCur.cost}}}};
    }catch(err){
     platformState.tiktok={done:false,error:err.message,data:null};
     console.error('TikTok summary capture error',err);
@@ -2221,21 +2309,91 @@ function fmtInsightSentence(k){
 
 function renderSummaryPlatformCard(pConf){
   const st=platformState[pConf.key];
+  if(!st||!st.done||!st.data){
+    const label=st&&st.error?'✕ Gagal — '+escapeHtml(st.error):'⏳ Belum diproses';
+    const color=st&&st.error?'#dc2626':'var(--muted)';
+    return `<div class="summary-plat-card">
+      <div class="summary-plat-title" style="color:${pConf.color}">${pConf.label}</div>
+      <div class="empty-note" style="color:${color};font-style:normal">${label}</div>
+    </div>`;
+  }
   const d=st.data;
   const keys=SUMMARY_HEADLINE_KEYS[pConf.key];
   let kpis=d.kpis||[];
+  // CPAS gets its own dedicated card (renderCpasSummaryCard), so Meta's own
+  // card stays focused on Boost/Non-Boost Post and doesn't get crowded out.
+  if(pConf.key==='meta')kpis=kpis.filter(k=>!k.label.startsWith('CPAS Marketplace'));
   if(keys){
     const filtered=kpis.filter(k=>keys.includes(k.key));
     if(filtered.length)kpis=filtered;
   }
   kpis=kpis.slice(0,6);
   const rowsHtml=kpis.length
-    ? kpis.map(k=>`<div class="summary-plat-kpi"><span>${escapeHtml(k.label)}</span><span class="${k.cls}">${k.cur} <span style="font-family:var(--m);font-size:.68rem">(${k.delta})</span></span></div>`).join('')
+    ? kpis.map(k=>`<div class="summary-plat-kpi"><span>${escapeHtml(k.label)}</span><span class="summary-plat-kpi-val"><span class="${k.cls}">${k.cur}</span><span class="summary-plat-kpi-delta ${k.cls}">(${k.delta})</span></span></div>`).join('')
     : '<div class="empty-note">Tidak ada KPI.</div>';
   return `<div class="summary-plat-card">
     <div class="summary-plat-title" style="color:${pConf.color}">${pConf.label}</div>
     <div class="summary-plat-period">${escapeHtml((d.period&&d.period.old)||'')} → ${escapeHtml((d.period&&d.period.cur)||'')}</div>
     ${rowsHtml}
+  </div>`;
+}
+
+// CPAS runs inside the Meta tab (not its own PLATFORM_CONFIG entry), so it
+// doesn't get an automatic card from renderSummaryPlatformCard — this adds
+// one explicitly, appended after the 3 platform cards, only when CPAS data
+// actually exists.
+function renderCpasSummaryCard(){
+  const st=platformState.meta;
+  if(!st||!st.done||!st.data||!st.data.cpasKpis||!st.data.cpasKpis.length)return'';
+  const kpis=st.data.cpasKpis.slice(0,6);
+  const rowsHtml=kpis.map(k=>`<div class="summary-plat-kpi"><span>${escapeHtml(k.label)}</span><span class="summary-plat-kpi-val"><span class="${k.cls}">${k.cur}</span><span class="summary-plat-kpi-delta ${k.cls}">(${k.delta})</span></span></div>`).join('');
+  const d=st.data;
+  return `<div class="summary-plat-card">
+    <div class="summary-plat-title" style="color:#7c3aed">CPAS Marketplace</div>
+    <div class="summary-plat-period">${escapeHtml((d.period&&d.period.old)||'')} → ${escapeHtml((d.period&&d.period.cur)||'')}</div>
+    ${rowsHtml}
+  </div>`;
+}
+
+// Pulls the raw (unformatted) Amount Spent figures each platform's generate()
+// step stashed in platformState[key].data.spend — kept as plain numbers
+// specifically so they can be summed here without re-parsing formatted
+// "Rp1.234.567" strings back out of the display KPIs.
+function computeTotalAmountSpentItems(){
+  const items=[];
+  const push=(label,entry)=>{if(entry&&entry.cur!=null&&!isNaN(entry.cur))items.push({label,old:entry.old,cur:entry.cur});};
+  const m=platformState.meta.done&&platformState.meta.data?platformState.meta.data.spend:null;
+  if(m){
+    push('Boost Post · Amount Spent (IDR)',m.boost);
+    push('Non-Boost Post · Amount Spent (IDR)',m.nonboost);
+    push('CPAS Marketplace · NV · Amount Spent (IDR)',m.cpasNV);
+    push('CPAS Marketplace · RM · Amount Spent (IDR)',m.cpasRM);
+  }
+  const s=platformState.shopee.done&&platformState.shopee.data?platformState.shopee.data.spend:null;
+  if(s)push('Shopee Ads · Biaya',s.ads);
+  const t=platformState.tiktok.done&&platformState.tiktok.data?platformState.tiktok.data.spend:null;
+  if(t)push('TikTok GMV Max · Cost',t.overall);
+  return items;
+}
+function renderTotalAmountSpentCard(){
+  const items=computeTotalAmountSpentItems();
+  if(!items.length)return'';
+  const fmtRp=v=>(v==null||isNaN(v))?'—':'Rp'+Math.round(v).toLocaleString('id-ID');
+  const rows=items.map(i=>{
+    const hasOld=i.old!=null&&!isNaN(i.old);
+    const{deltaStr}=hasOld?computeDelta(i.old,i.cur):{deltaStr:'—'};
+    return `<tr><td>${escapeHtml(i.label)}</td><td>${fmtRp(i.old)}</td><td>${fmtRp(i.cur)}</td><td class="delta-neutral">${deltaStr}</td></tr>`;
+  }).join('');
+  const totalOld=items.reduce((s,i)=>s+(i.old||0),0);
+  const totalCur=items.reduce((s,i)=>s+(i.cur||0),0);
+  const anyOld=items.some(i=>i.old!=null&&!isNaN(i.old));
+  const{deltaStr:totalDelta}=anyOld?computeDelta(totalOld,totalCur):{deltaStr:'—'};
+  return `<div class="sec-block">
+    <div class="sec-heading summary-heading">Total Amount Spent</div>
+    <div style="padding:0 1.4rem 1.4rem">
+      <table class="kpi-table"><thead><tr><th></th><th>Periode Lalu</th><th>Periode Ini</th><th>Changes</th></tr></thead>
+      <tbody>${rows}<tr style="font-weight:700;border-top:2px solid var(--border)"><td>Total</td><td>${fmtRp(totalOld)}</td><td>${fmtRp(totalCur)}</td><td class="delta-neutral">${totalDelta}</td></tr></tbody></table>
+    </div>
   </div>`;
 }
 
@@ -2250,20 +2408,22 @@ function renderSummaryPending(){
   }).join('');
   return `<div class="sec-block">
     <div class="sec-inner" style="padding:1.6rem">
-      <div style="font-size:.92rem;font-weight:700;margin-bottom:.35rem;color:var(--text)">Summary Overview akan tersedia setelah seluruh laporan berhasil dibuat.</div>
-      <div style="font-size:.78rem;color:var(--muted);margin-bottom:1.1rem;line-height:1.5">Buka masing-masing tab (Meta Ads, Shopee Ads, TikTok GMV Max), lengkapi data, lalu klik <strong>Generate Laporan</strong> hingga status seluruh platform di bawah ini menjadi "Selesai".</div>
+      <div style="font-size:.92rem;font-weight:700;margin-bottom:.35rem;color:var(--text)">Summary Overview akan tersedia setelah minimal satu laporan berhasil dibuat.</div>
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:1.1rem;line-height:1.5">Buka salah satu tab (Meta Ads, Shopee Ads, atau TikTok GMV Max), lengkapi data, lalu klik <strong>Generate Laporan</strong>. Summary akan langsung menampilkan hasil dari platform yang sudah "Selesai"; platform lain bisa ditambahkan kapan saja.</div>
       <table class="kpi-table"><tbody>${rows}</tbody></table>
     </div>
   </div>`;
 }
 
 function renderSummaryContent(ins){
-  const periodMeta=PLATFORM_CONFIG.map(p=>{
-    const d=platformState[p.key].data;
-    return `${p.label}: ${escapeHtml((d.period&&d.period.old)||'—')} → ${escapeHtml((d.period&&d.period.cur)||'—')}`;
-  }).join(' · ');
+  const periodMeta=PLATFORM_CONFIG.filter(p=>platformState[p.key].done&&platformState[p.key].data)
+    .map(p=>{
+      const d=platformState[p.key].data;
+      return `${p.label}: ${escapeHtml((d.period&&d.period.old)||'—')} → ${escapeHtml((d.period&&d.period.cur)||'—')}`;
+    }).join(' · ');
 
-  const platformCards=PLATFORM_CONFIG.map(renderSummaryPlatformCard).join('');
+  const platformCards=PLATFORM_CONFIG.map(renderSummaryPlatformCard).join('')+renderCpasSummaryCard();
+  const totalSpendCard=renderTotalAmountSpentCard();
 
   const insightItems=ins.topInsights.length
     ? ins.topInsights.map(k=>`<li class="insight-item"><div class="insight-dot"></div><div>${fmtInsightSentence(k)}</div></li>`).join('')
@@ -2300,6 +2460,7 @@ function renderSummaryContent(ins){
       <div class="report-period">Ringkasan Eksekutif — Seluruh Channel</div>
       <div class="report-meta">${periodMeta} · Generated ${new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</div>
     </div>
+    ${totalSpendCard}
     <div class="sec-block">
       <div class="sec-heading summary-heading">Ringkasan Performa per Platform</div>
       <div class="summary-platform-grid">${platformCards}</div>
@@ -2333,8 +2494,8 @@ function renderSummaryContent(ins){
 function renderSummaryOverview(){
   const container=document.getElementById('summary-container');
   if(!container)return;
-  const allDone=PLATFORM_CONFIG.every(p=>platformState[p.key].done);
-  container.innerHTML=allDone?renderSummaryContent(computeSummaryInsights()):renderSummaryPending();
+  const anyDone=PLATFORM_CONFIG.some(p=>platformState[p.key].done);
+  container.innerHTML=anyDone?renderSummaryContent(computeSummaryInsights()):renderSummaryPending();
   attachSectionDownloadButtons(container);
 }
 
