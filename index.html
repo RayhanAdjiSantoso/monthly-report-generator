@@ -1032,7 +1032,8 @@ function agg(rows,col){
     const spentCol=findSpentCol(rows);
     const hs=Object.keys(rows[0]||{});
     const shared=lc.includes('shared');
-    const revCol=hs.find(h=>{const h2=h.toLowerCase();return h2.includes('conversion value')&&!h2.includes('roas')&&h2.includes('shared')===shared;});
+    const purchase=lc.includes('purchase');
+    const revCol=hs.find(h=>{const h2=h.toLowerCase();return h2.includes('conversion value')&&!h2.includes('roas')&&h2.includes('shared')===shared&&(!purchase||h2.includes('purchase'));});
     if(spentCol&&revCol){const ts=aggSum(rows,spentCol),tr=aggSum(rows,revCol);if(ts!==null&&tr!==null&&ts!==0)return tr/ts;}
     return null;
   }
