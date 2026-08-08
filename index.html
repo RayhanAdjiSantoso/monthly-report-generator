@@ -2089,7 +2089,7 @@ function generate(){
     periodLabel=p2; metaLabel=`vs ${p1}`;
     const mDimCols=[mMonthCol,mCampCol,mAgeCol,mGenderCol].filter(Boolean);
     const mAllCols=withCpmCol(hdrs.meta.filter(h=>isNumericCol(h,mRows)&&!mDimCols.includes(h)));
-    const isBoostRow=r=>{const v=String(r[mCampCol]||'').toLowerCase();return v.includes('profile visit')||v.includes('instagram post')||/\bpv\b/.test(v);};
+    const isBoostRow=r=>{const v=String(r[mCampCol]||'').toLowerCase();return v.includes('profile visit')||v.includes('instagram post')||/\bpv\b/.test(v)||/\bpost\b/.test(v);};
     const mBoostOld=mOld.filter(r=>isBoostRow(r)),mBoostCur=mCur.filter(r=>isBoostRow(r));
     const mNonOld=mOld.filter(r=>!isBoostRow(r)),mNonCur=mCur.filter(r=>!isBoostRow(r));
     const hasNonBoost=mNonOld.length>0||mNonCur.length>0;
@@ -2284,13 +2284,18 @@ function computeSummaryInsights(){
     });
   });
   const bySize=[...all].sort((a,b)=>Math.abs(b.deltaNum)-Math.abs(a.deltaNum));
-  const significant=bySize.filter(k=>Math.abs(k.deltaNum)>=15);
+  const platformOrder=Object.fromEntries(PLATFORM_CONFIG.map((p,i)=>[p.key,i]));
+  // Selection (which items make the cut) stays magnitude-based; only the
+  // final display order is regrouped by channel (Meta → Shopee → TikTok),
+  // stable-sorted so magnitude order is preserved within each channel.
+  const byChannel=arr=>[...arr].sort((a,b)=>(platformOrder[a.platformKey]??99)-(platformOrder[b.platformKey]??99));
+  const significant=byChannel(bySize.filter(k=>Math.abs(k.deltaNum)>=15));
   const good=bySize.filter(k=>k.cls==='delta-good');
   const bad=bySize.filter(k=>k.cls==='delta-bad');
   const best=good[0]||null;
   const worst=bad[0]||null;
-  const topInsights=bySize.slice(0,5);
-  const opportunities=bad.slice(0,5);
+  const topInsights=byChannel(bySize.slice(0,5));
+  const opportunities=byChannel(bad.slice(0,5));
   const recommendations=opportunities.map(o=>{
     const mag=Math.abs(o.deltaNum);
     const priority=mag>=25?'Tinggi':mag>=10?'Sedang':'Rendah';
