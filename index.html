@@ -271,6 +271,13 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .howto-col-list li::before{content:'·';color:var(--muted2);flex-shrink:0}
 @media(max-width:600px){.howto-cols{grid-template-columns:1fr}}
 
+/* ── Business Overview tab ── */
+.ptab.business-tab.active{border-color:#0d9488;background:#effaf8;color:#0d9488}
+.ptab.business-tab.active .ptab-dot{background:#0d9488}
+.ptab.business-tab.active .ptab-badge{background:#d7f4f0;border-color:#a9e6dd;color:#0d9488}
+.sec-heading.business-heading{color:#0d9488}
+.sec-heading.business-heading::before{background:linear-gradient(180deg,#0d9488,#00c2e0)}
+
 /* ── Summary tab ── */
 .ptab.summary-tab.active{border-color:#7c3aed;background:#f5f0ff;color:#7c3aed}
 .ptab.summary-tab.active .ptab-dot{background:#7c3aed}
@@ -309,6 +316,39 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .reco-priority.medium{background:#fdf1d8;color:#b7791f}
 .reco-priority.low{background:#e6f4ea;color:#16a34a}
 .reco-text{font-size:.8rem;color:var(--text);flex:1}
+
+/* ── Business Overview Metrics ── */
+.biz-subheading{font-size:.68rem;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.08em;font-family:var(--m);margin-bottom:.5rem}
+.biz-calc-block{margin-bottom:1.2rem}
+.biz-calc-block:last-child{margin-bottom:0}
+.biz-table-block{margin-bottom:1.3rem}
+/* Inputs get a clearly visible box at rest (not just on hover/focus) so the
+   table reads as "fill me in" rather than a plain data table. */
+.biz-input-table td{padding:.45rem .55rem}
+.biz-input-table input.biz-input{width:100%;min-width:82px;border:1.5px solid var(--border);background:var(--surface);font:inherit;font-family:var(--m);color:var(--text);text-align:right;outline:none;padding:.42rem .6rem;border-radius:7px;transition:border-color .15s,box-shadow .15s}
+.biz-input-table input.biz-input::placeholder{color:var(--muted2);font-weight:400}
+.biz-input-table input.biz-input:hover{border-color:var(--muted2)}
+.biz-input-table input.biz-input:focus{border-color:var(--acc);background:#fff;box-shadow:0 0 0 3px rgba(30,62,184,.12)}
+.biz-input-table input.biz-row-name{text-align:left;font-weight:600;font-family:var(--f)}
+.biz-input-table th{white-space:nowrap}
+/* Grouped two-row header (Revenue / Transaksi / Qty, each split into Lalu·Ini)
+   plus a light per-group column tint that runs down through the body, so
+   it's obvious at a glance which pair of fields belongs to which metric. */
+.biz-input-table thead tr.biz-group-row th{font-size:.64rem;text-transform:uppercase;letter-spacing:.06em;text-align:center;border-bottom:1px solid var(--border)}
+.biz-input-table thead tr.biz-sub-row th{font-size:.64rem;text-align:center;font-weight:600;color:var(--muted)}
+.biz-input-table .biz-col-revenue{background:rgba(13,148,136,.055)}
+.biz-input-table thead th.biz-col-revenue{color:#0d9488}
+.biz-input-table .biz-col-tx{background:rgba(245,166,35,.09)}
+.biz-input-table thead th.biz-col-tx{color:#b7791f}
+.biz-input-table .biz-col-qty{background:rgba(30,62,184,.05)}
+.biz-input-table thead th.biz-col-qty{color:var(--acc)}
+.biz-row-remove{cursor:pointer;color:var(--muted2);font-size:.85em;line-height:1;margin-left:6px;flex-shrink:0}
+.biz-row-remove:hover{color:#e5484d}
+.biz-row-name-cell{display:flex;align-items:center;gap:4px}
+.biz-add-row{margin-top:.6rem}
+.biz-subgroup{margin-bottom:1rem}
+.biz-subgroup-label{font-size:.72rem;font-weight:700;color:var(--text);margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
+.biz-subgroup-label::before{content:'';width:3px;height:1em;background:linear-gradient(180deg,#0d9488,#00c2e0);border-radius:2px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -337,6 +377,11 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
       <div class="ptab-dot"></div>
       TikTok GMV Max
       <span class="ptab-badge" id="tab-tiktok-badge">—</span>
+    </div>
+    <div class="ptab business-tab" id="tab-business" onclick="switchTab('business')">
+      <div class="ptab-dot"></div>
+      Business Overview
+      <span class="ptab-badge" id="tab-business-badge">—</span>
     </div>
     <div class="ptab summary-tab" id="tab-summary" onclick="switchTab('summary')">
       <div class="ptab-dot"></div>
@@ -648,6 +693,11 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
     </div>
   </div>
 
+  <!-- ══ BUSINESS OVERVIEW PANEL ══ -->
+  <div class="panel" id="panel-business">
+    <div id="business-container"></div>
+  </div>
+
   <!-- ══ SUMMARY OVERVIEW PANEL ══ -->
   <div class="panel" id="panel-summary">
     <div id="summary-container"></div>
@@ -732,6 +782,40 @@ const SUMMARY_HEADLINE_KEYS={
   shopee:['omzetTotal','kontribusi','biaya','pesanan','roas'],
   tiktok:['cost','orders','revenue','roi'],
 };
+
+// ══════════════════════════════════════════════════════
+// BUSINESS OVERVIEW METRICS — manual channel input (state lives here, not
+// the DOM, so switching tabs / regenerating a platform report never loses
+// what the user typed). Fully optional: every read goes through
+// bizChannelValue()/safeDiv(), which return null instead of throwing or
+// producing NaN/Infinity when data is missing.
+// ══════════════════════════════════════════════════════
+const BIZ_INPUT_CHANNELS=[
+  {key:'shopee',    label:'Shopee'},
+  {key:'tiktok',    label:'TikTok'},
+  {key:'tokopedia', label:'Tokopedia'},
+  {key:'website',   label:'Website'},
+  {key:'chat',      label:'Chat'},
+];
+const BIZ_ALL_CHANNELS=[
+  ...BIZ_INPUT_CHANNELS,
+  {key:'offline_sales', label:'Offline Sales'},
+  {key:'other_channel',  label:'Other Channel'},
+];
+function emptyBizMetric(){return{old:null,cur:null};}
+function emptyBizChannel(){return{revenue:emptyBizMetric(),transactions:emptyBizMetric(),qty:emptyBizMetric()};}
+const bizChannelData={};
+BIZ_INPUT_CHANNELS.forEach(c=>{bizChannelData[c.key]=emptyBizChannel();});
+let bizRowSeq=1;
+function newBizRow(name){return{id:bizRowSeq++,name,...emptyBizChannel()};}
+let bizOfflineStores=[newBizRow('Store 1')];
+let bizOtherChannels=[newBizRow('Channel 1')];
+
+function resetBizOverview(){
+  BIZ_INPUT_CHANNELS.forEach(c=>{bizChannelData[c.key]=emptyBizChannel();});
+  bizOfflineStores=[newBizRow('Store 1')];
+  bizOtherChannels=[newBizRow('Channel 1')];
+}
 
 function invalidatePlatform(tab){
   if(!platformState[tab])return;
@@ -895,6 +979,7 @@ function switchTab(tab){
   document.getElementById('report').style.display='none';
   document.getElementById('r-body').innerHTML='';
   if(tab==='summary')renderSummaryOverview();
+  if(tab==='business')renderBusinessOverview();
   checkReady();
 }
 
@@ -1658,7 +1743,10 @@ function resetAll(){
   updateTabBadge('shopee','—');
   updateTabBadge('tiktok','—');
   PLATFORM_CONFIG.forEach(p=>{platformState[p.key]={done:false,error:null,data:null};});
+  resetBizOverview();
   updateSummaryBadge();
+  updateTabBadge('business',bizBadgeLabel());
+  if(activeTab==='business')renderBusinessOverview();
 }
 
 // ══════════════════════════════════════════════════════
@@ -2366,6 +2454,286 @@ function renderCpasSummaryCard(){
 // step stashed in platformState[key].data.spend — kept as plain numbers
 // specifically so they can be summed here without re-parsing formatted
 // "Rp1.234.567" strings back out of the display KPIs.
+// ══════════════════════════════════════════════════════
+// BUSINESS OVERVIEW METRICS — calculation & rendering
+// ══════════════════════════════════════════════════════
+function parseBizInputValue(str){
+  const raw=String(str==null?'':str).replace(/[^\d]/g,'');
+  return raw===''?null:parseInt(raw,10);
+}
+function formatBizInputValue(v){
+  return v==null?'':v.toLocaleString('id-ID');
+}
+// Shopee's "Total Omzet Toko" (Pesanan Dibuat status, entered on the Shopee
+// Ads tab) is the only place this app already holds genuine total-channel
+// revenue — reused here instead of asking for the same number twice.
+function shopeeOmzetValue(period){
+  const el=document.getElementById('omzet-'+period);
+  return el?parseBizInputValue(el.value):null;
+}
+function sumMaybe(vals){
+  const present=vals.filter(v=>v!=null&&!isNaN(v));
+  if(!present.length)return null;
+  return present.reduce((a,b)=>a+b,0);
+}
+function bizChannelValue(chKey,metric,period){
+  if(chKey==='offline_sales')return sumMaybe(bizOfflineStores.map(r=>r[metric][period]));
+  if(chKey==='other_channel')return sumMaybe(bizOtherChannels.map(r=>r[metric][period]));
+  let v=bizChannelData[chKey]?bizChannelData[chKey][metric][period]:null;
+  if(v==null&&chKey==='shopee'&&metric==='revenue')v=shopeeOmzetValue(period);
+  return v;
+}
+function bizTotalMetric(metric,period){
+  return sumMaybe(BIZ_ALL_CHANNELS.map(ch=>bizChannelValue(ch.key,metric,period)));
+}
+function safeDiv(num,den){
+  if(num==null||den==null||isNaN(num)||isNaN(den)||den===0)return null;
+  const r=num/den;
+  return isFinite(r)?r:null;
+}
+function fmtBizNum(v){return v==null||isNaN(v)?'—':Math.round(v).toLocaleString('id-ID');}
+function fmtBizRp(v){return v==null||isNaN(v)?'—':'Rp'+Math.round(v).toLocaleString('id-ID');}
+function fmtBizDec(v){return v==null||isNaN(v)?'—':v.toFixed(2);}
+function fmtBizPct(v){return v==null||isNaN(v)?'—':(v*100).toFixed(2)+'%';}
+
+function bizAOV(period,chKey){
+  const rev=chKey==='__total__'?bizTotalMetric('revenue',period):bizChannelValue(chKey,'revenue',period);
+  const tx=chKey==='__total__'?bizTotalMetric('transactions',period):bizChannelValue(chKey,'transactions',period);
+  return safeDiv(rev,tx);
+}
+function bizAUR(period,chKey){
+  const rev=chKey==='__total__'?bizTotalMetric('revenue',period):bizChannelValue(chKey,'revenue',period);
+  const qty=chKey==='__total__'?bizTotalMetric('qty',period):bizChannelValue(chKey,'qty',period);
+  return safeDiv(rev,qty);
+}
+function bizBasket(period,chKey){
+  const qty=chKey==='__total__'?bizTotalMetric('qty',period):bizChannelValue(chKey,'qty',period);
+  const tx=chKey==='__total__'?bizTotalMetric('transactions',period):bizChannelValue(chKey,'transactions',period);
+  return safeDiv(qty,tx);
+}
+// Total Amount Spent is intentionally not reduced to 0 when no platform
+// report exists yet — that's "unknown", not "zero spend" — so Cost per
+// Revenue shows "—" instead of a misleading Rp0.
+function bizTotalAmountSpent(period){
+  const items=computeTotalAmountSpentItems();
+  if(!items.length)return null;
+  return sumMaybe(items.map(i=>i[period]));
+}
+function bizCostPerRevenue(period){
+  return safeDiv(bizTotalAmountSpent(period),bizTotalMetric('revenue',period));
+}
+
+function bizDeltaCell(vOld,vCur,fmt,sentiment){
+  const{deltaNum,deltaStr}=(vOld!=null&&vCur!=null)?computeDelta(vOld,vCur):{deltaNum:null,deltaStr:'—'};
+  const cls=shopeeDeltaClass(deltaNum,sentiment||'higher-better');
+  return`<td>${fmt(vOld)}</td><td>${fmt(vCur)}</td><td class="${cls}">${deltaStr}</td>`;
+}
+function renderBizChannelTable(metric,fmt){
+  const rows=BIZ_ALL_CHANNELS.map(ch=>{
+    const vOld=bizChannelValue(ch.key,metric,'old'),vCur=bizChannelValue(ch.key,metric,'cur');
+    return`<tr><td>${escapeHtml(ch.label)}</td>${bizDeltaCell(vOld,vCur,fmt)}</tr>`;
+  }).join('');
+  const totalOld=bizTotalMetric(metric,'old'),totalCur=bizTotalMetric(metric,'cur');
+  return`<table class="kpi-table"><thead><tr><th></th><th>Periode Lalu</th><th>Periode Ini</th><th>Changes</th></tr></thead>
+    <tbody>${rows}<tr style="font-weight:700;border-top:2px solid var(--border)"><td>Total</td>${bizDeltaCell(totalOld,totalCur,fmt)}</tr></tbody></table>`;
+}
+function renderBizCalcTable(title,calcFn,fmt){
+  const rows=BIZ_ALL_CHANNELS.map(ch=>{
+    const vOld=calcFn('old',ch.key),vCur=calcFn('cur',ch.key);
+    return`<tr><td>${escapeHtml(ch.label)}</td>${bizDeltaCell(vOld,vCur,fmt)}</tr>`;
+  }).join('');
+  const vOldT=calcFn('old','__total__'),vCurT=calcFn('cur','__total__');
+  return`<div class="biz-calc-block">
+    <div class="biz-subheading">${escapeHtml(title)}</div>
+    <table class="kpi-table"><thead><tr><th></th><th>Periode Lalu</th><th>Periode Ini</th><th>Changes</th></tr></thead>
+    <tbody>${rows}<tr style="font-weight:700;border-top:2px solid var(--border)"><td>Total</td>${bizDeltaCell(vOldT,vCurT,fmt)}</tr></tbody></table>
+  </div>`;
+}
+function bizCalcMetricsHtml(){
+  return`
+    ${renderBizCalcTable('AOV — Average Order Value (Revenue ÷ Transaksi)',bizAOV,fmtBizRp)}
+    ${renderBizCalcTable('AUR — Average Unit Revenue (Revenue ÷ Qty Sold)',bizAUR,fmtBizRp)}
+    ${renderBizCalcTable('Avg. Basket Size (Qty Sold ÷ Transaksi)',bizBasket,fmtBizDec)}`;
+}
+function bizCprHtml(){
+  const cprOld=bizCostPerRevenue('old'),cprCur=bizCostPerRevenue('cur');
+  return`<table class="kpi-table"><thead><tr><th></th><th>Periode Lalu</th><th>Periode Ini</th><th>Changes</th></tr></thead>
+    <tbody><tr><td>Cost per Revenue</td>${bizDeltaCell(cprOld,cprCur,fmtBizPct,'lower-better')}</tr></tbody></table>
+    <div class="empty-note" style="padding-top:.6rem">Cost per Revenue = Total Amount Spent ÷ Total Revenue (seluruh channel). Total Revenue diambil dari tab <span style="cursor:pointer;color:var(--acc);text-decoration:underline" onclick="switchTab('business')">Business Overview</span>.</div>`;
+}
+function renderCostPerRevenueCard(){
+  return`<div class="sec-block">
+    <div class="sec-heading summary-heading">Cost per Revenue Overview</div>
+    <div id="cpr-body" style="padding:1rem 1.4rem 1.4rem">${bizCprHtml()}</div>
+  </div>`;
+}
+
+// ── Business Overview input form (editable) ──
+const BIZ_METRIC_GROUP_CLASS={revenue:'biz-col-revenue',transactions:'biz-col-tx',qty:'biz-col-qty'};
+function bizInputRow(scope,rowIdForJs,name,nameEditable,data,placeholders){
+  const nameCell=nameEditable
+    ?`<td class="biz-row-name-cell"><input class="biz-input biz-row-name" type="text" value="${escapeHtml(name)}" oninput="bizRenameRow(this,'${scope}',${rowIdForJs})"><span class="biz-row-remove" title="Hapus baris" onclick="bizRemoveRow('${scope}',${rowIdForJs})">✕</span></td>`
+    :`<td>${escapeHtml(name)}</td>`;
+  const cell=(metric,period)=>{
+    const auto=placeholders&&placeholders[metric]&&placeholders[metric][period]!=null;
+    const ph=auto?formatBizInputValue(placeholders[metric][period]):'0';
+    const title=auto?` title="Otomatis dari Total Omzet Toko bila dikosongkan"`:'';
+    return`<td class="${BIZ_METRIC_GROUP_CLASS[metric]}"><input class="biz-input" type="text" inputmode="numeric" value="${formatBizInputValue(data[metric][period])}" placeholder="${ph}"${title} oninput="bizInputChanged(this,'${scope}',${rowIdForJs},'${metric}','${period}')"></td>`;
+  };
+  return`<tr>${nameCell}${cell('revenue','old')}${cell('revenue','cur')}${cell('transactions','old')}${cell('transactions','cur')}${cell('qty','old')}${cell('qty','cur')}</tr>`;
+}
+function renderBizInputFormHtml(){
+  const shopeePlaceholders={revenue:{old:shopeeOmzetValue('old'),cur:shopeeOmzetValue('cur')}};
+  const mainRows=BIZ_INPUT_CHANNELS.map(ch=>bizInputRow('channel',`'${ch.key}'`,ch.label,false,bizChannelData[ch.key],ch.key==='shopee'?shopeePlaceholders:null)).join('');
+  const offlineRows=bizOfflineStores.map(r=>bizInputRow('offline',r.id,r.name,true,r)).join('');
+  const otherRows=bizOtherChannels.map(r=>bizInputRow('other',r.id,r.name,true,r)).join('');
+  // Two-row header: metric group (Revenue/Transaksi/Qty) on top, Lalu·Ini
+  // underneath — plus a matching column tint carried down through the body
+  // (see .biz-col-* CSS) so each pair of fields is easy to trace at a glance.
+  const head=`<thead>
+    <tr class="biz-group-row">
+      <th rowspan="2">Channel</th>
+      <th colspan="2" class="biz-col-revenue">Revenue (Rp)</th>
+      <th colspan="2" class="biz-col-tx">Transaksi</th>
+      <th colspan="2" class="biz-col-qty">Qty Terjual</th>
+    </tr>
+    <tr class="biz-sub-row">
+      <th class="biz-col-revenue">Lalu</th><th class="biz-col-revenue">Ini</th>
+      <th class="biz-col-tx">Lalu</th><th class="biz-col-tx">Ini</th>
+      <th class="biz-col-qty">Lalu</th><th class="biz-col-qty">Ini</th>
+    </tr>
+  </thead>`;
+  return`
+    <div class="tbl-scroll"><table class="kpi-table biz-input-table">${head}<tbody>${mainRows}</tbody></table></div>
+    <div class="biz-subgroup">
+      <div class="biz-subgroup-label">Offline Sales — per toko (otomatis dijumlahkan jadi satu baris Offline Sales)</div>
+      <div class="tbl-scroll"><table class="kpi-table biz-input-table">${head}<tbody>${offlineRows}</tbody></table></div>
+      <div class="biz-add-row"><span class="mpill mpill-add" onclick="bizAddRow('offline')">+ Tambah Toko</span></div>
+    </div>
+    <div class="biz-subgroup">
+      <div class="biz-subgroup-label">Other Channel — per channel tambahan (otomatis dijumlahkan jadi satu baris Other Channel)</div>
+      <div class="tbl-scroll"><table class="kpi-table biz-input-table">${head}<tbody>${otherRows}</tbody></table></div>
+      <div class="biz-add-row"><span class="mpill mpill-add" onclick="bizAddRow('other')">+ Tambah Channel</span></div>
+    </div>`;
+}
+// ── Business Overview — dedicated tab (own cards, one per section) ──
+function renderBizInputCard(){
+  return`<div class="sec-block">
+    <div class="sec-heading business-heading">Input Data Business Overview<span class="sec-badge">Opsional</span></div>
+    <div style="padding:1.2rem 1.4rem 1.4rem">
+      <div class="empty-note" style="padding-top:0;padding-bottom:.8rem">Isi data per channel untuk periode lalu &amp; ini. Kosongkan field yang belum tersedia — metrik terkait akan tampil "—" tanpa error. Revenue Shopee otomatis mengikuti Total Omzet Toko dari tab Shopee Ads bila dikosongkan di sini.</div>
+      <div id="biz-input-form">${renderBizInputFormHtml()}</div>
+    </div>
+  </div>`;
+}
+function renderBizRevenueCard(){
+  return`<div class="sec-block">
+    <div class="sec-heading business-heading">Revenue by Channel</div>
+    <div id="biz-revenue-body" style="padding:0 1.4rem 1.4rem">${renderBizChannelTable('revenue',fmtBizRp)}</div>
+  </div>`;
+}
+function renderBizTransactionsCard(){
+  return`<div class="sec-block">
+    <div class="sec-heading business-heading">Transactions by Channel</div>
+    <div id="biz-tx-body" style="padding:0 1.4rem 1.4rem">${renderBizChannelTable('transactions',fmtBizNum)}</div>
+  </div>`;
+}
+function renderBizQtyCard(){
+  return`<div class="sec-block">
+    <div class="sec-heading business-heading">Qty Sold by Channel</div>
+    <div id="biz-qty-body" style="padding:0 1.4rem 1.4rem">${renderBizChannelTable('qty',fmtBizNum)}</div>
+  </div>`;
+}
+function renderBizCalcMetricsCard(){
+  return`<div class="sec-block">
+    <div class="sec-heading business-heading">Calculated Business Metrics</div>
+    <div id="biz-calc-body" style="padding:1.2rem 1.4rem 1.4rem">${bizCalcMetricsHtml()}</div>
+  </div>`;
+}
+function bizBadgeLabel(){
+  const filled=BIZ_ALL_CHANNELS.filter(ch=>['revenue','transactions','qty'].some(m=>bizChannelValue(ch.key,m,'old')!=null||bizChannelValue(ch.key,m,'cur')!=null));
+  return filled.length?`${filled.length}/${BIZ_ALL_CHANNELS.length}`:'—';
+}
+// Live-refreshes every rendered output (both the Business Overview tab's own
+// cards and Summary Overview's Cost per Revenue card, wherever each happens
+// to currently exist in the DOM) after any input/row change, without
+// rebuilding the input fields themselves — so focus/cursor is preserved.
+function refreshBizOutputs(){
+  const targets={
+    'biz-revenue-body':()=>renderBizChannelTable('revenue',fmtBizRp),
+    'biz-tx-body':()=>renderBizChannelTable('transactions',fmtBizNum),
+    'biz-qty-body':()=>renderBizChannelTable('qty',fmtBizNum),
+    'biz-calc-body':()=>bizCalcMetricsHtml(),
+    'cpr-body':()=>bizCprHtml(),
+  };
+  Object.keys(targets).forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.innerHTML=targets[id]();
+  });
+  updateTabBadge('business',bizBadgeLabel());
+}
+function refreshBizInputForm(){
+  const form=document.getElementById('biz-input-form');
+  if(form)form.innerHTML=renderBizInputFormHtml();
+}
+function bizInputChanged(el,scope,rowId,metric,period){
+  const val=parseBizInputValue(el.value);
+  el.value=formatBizInputValue(val);
+  let target;
+  if(scope==='channel')target=bizChannelData[rowId];
+  else if(scope==='offline')target=bizOfflineStores.find(r=>r.id===rowId);
+  else target=bizOtherChannels.find(r=>r.id===rowId);
+  if(!target)return;
+  target[metric][period]=val;
+  refreshBizOutputs();
+}
+function bizAddRow(scope){
+  const arr=scope==='offline'?bizOfflineStores:bizOtherChannels;
+  const prefix=scope==='offline'?'Store':'Channel';
+  arr.push(newBizRow(`${prefix} ${arr.length+1}`));
+  refreshBizInputForm();
+  refreshBizOutputs();
+}
+function bizRemoveRow(scope,id){
+  if(scope==='offline'){
+    if(bizOfflineStores.length<=1)return;
+    bizOfflineStores=bizOfflineStores.filter(r=>r.id!==id);
+  }else{
+    if(bizOtherChannels.length<=1)return;
+    bizOtherChannels=bizOtherChannels.filter(r=>r.id!==id);
+  }
+  refreshBizInputForm();
+  refreshBizOutputs();
+}
+function bizRenameRow(el,scope,id){
+  const arr=scope==='offline'?bizOfflineStores:bizOtherChannels;
+  const row=arr.find(r=>r.id===id);
+  if(row)row.name=el.value||row.name;
+  refreshBizOutputs();
+}
+function renderBusinessOverviewSafe(){
+  try{
+    return renderBizInputCard()+renderBizRevenueCard()+renderBizTransactionsCard()+renderBizQtyCard()+renderBizCalcMetricsCard();
+  }catch(err){
+    console.error('Business Overview render failed:',err);
+    return `<div class="sec-block"><div class="sec-inner" style="padding:1.2rem 1.4rem"><div class="empty-note">Business Overview gagal ditampilkan (${escapeHtml(err.message)}).</div></div></div>`;
+  }
+}
+function renderBusinessOverview(){
+  const container=document.getElementById('business-container');
+  if(!container)return;
+  container.innerHTML=`<div class="report-top">
+      <div class="report-title">Business Overview</div>
+      <div class="report-period">Revenue, Transaksi &amp; Qty Sold — Seluruh Channel</div>
+      <div class="report-meta">Data manual, independen dari status laporan ads · Generated ${new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</div>
+    </div>`+renderBusinessOverviewSafe()+`
+    <div class="action-row" style="margin-top:1rem;padding-top:1.5rem;border-top:1px solid var(--border)">
+      <button class="btn btn-ghost" onclick="downloadBusinessPDF(this)">⬇ Download PDF</button>
+    </div>`;
+  attachSectionDownloadButtons(container);
+  updateTabBadge('business',bizBadgeLabel());
+}
+
 function computeTotalAmountSpentItems(){
   const items=[];
   const push=(label,entry)=>{if(entry&&entry.cur!=null&&!isNaN(entry.cur))items.push({label,old:entry.old,cur:entry.cur});};
@@ -2415,20 +2783,27 @@ function renderSummaryPending(){
   }).join('');
   return `<div class="sec-block">
     <div class="sec-inner" style="padding:1.6rem">
-      <div style="font-size:.92rem;font-weight:700;margin-bottom:.35rem;color:var(--text)">Summary Overview akan tersedia setelah minimal satu laporan berhasil dibuat.</div>
-      <div style="font-size:.78rem;color:var(--muted);margin-bottom:1.1rem;line-height:1.5">Buka salah satu tab (Meta Ads, Shopee Ads, atau TikTok GMV Max), lengkapi data, lalu klik <strong>Generate Laporan</strong>. Summary akan langsung menampilkan hasil dari platform yang sudah "Selesai"; platform lain bisa ditambahkan kapan saja.</div>
+      <div style="font-size:.92rem;font-weight:700;margin-bottom:.35rem;color:var(--text)">Ringkasan performa ads & rekomendasi akan tersedia setelah minimal satu laporan platform berhasil dibuat.</div>
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:1.1rem;line-height:1.5">Buka salah satu tab (Meta Ads, Shopee Ads, atau TikTok GMV Max), lengkapi data, lalu klik <strong>Generate Laporan</strong>. Summary akan langsung menampilkan hasil dari platform yang sudah "Selesai"; platform lain bisa ditambahkan kapan saja. Tab <strong>Business Overview</strong> tetap bisa diisi kapan saja, terlepas dari status ini.</div>
       <table class="kpi-table"><tbody>${rows}</tbody></table>
     </div>
   </div>`;
 }
 
-function renderSummaryContent(ins){
+function renderSummaryBanner(){
   const periodMeta=PLATFORM_CONFIG.filter(p=>platformState[p.key].done&&platformState[p.key].data)
     .map(p=>{
       const d=platformState[p.key].data;
       return `${p.label}: ${escapeHtml((d.period&&d.period.old)||'—')} → ${escapeHtml((d.period&&d.period.cur)||'—')}`;
     }).join(' · ');
+  return `<div class="report-top">
+    <div class="report-title">Summary Overview</div>
+    <div class="report-period">Ringkasan Eksekutif — Seluruh Channel</div>
+    <div class="report-meta">${periodMeta||'Business Overview & ringkasan performa lintas channel'} · Generated ${new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</div>
+  </div>`;
+}
 
+function renderSummaryContent(ins){
   const platformCards=PLATFORM_CONFIG.map(renderSummaryPlatformCard).join('')+renderCpasSummaryCard();
   const totalSpendCard=renderTotalAmountSpentCard();
 
@@ -2462,11 +2837,6 @@ function renderSummaryContent(ins){
     : '<div class="empty-note">Tidak ada rekomendasi tindakan mendesak periode ini.</div>';
 
   return `
-    <div class="report-top">
-      <div class="report-title">Summary Overview</div>
-      <div class="report-period">Ringkasan Eksekutif — Seluruh Channel</div>
-      <div class="report-meta">${periodMeta} · Generated ${new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})}</div>
-    </div>
     ${totalSpendCard}
     <div class="sec-block">
       <div class="sec-heading summary-heading">Ringkasan Performa per Platform</div>
@@ -2498,11 +2868,22 @@ function renderSummaryContent(ins){
   `;
 }
 
+// Cost per Revenue reads Business Overview state (now entered on its own
+// tab) — a bug or unexpected input there must never take down the rest of
+// Summary Overview, so it's isolated behind its own try/catch.
+function renderCostPerRevenueSafe(){
+  try{
+    return renderCostPerRevenueCard();
+  }catch(err){
+    console.error('Cost per Revenue Overview render failed:',err);
+    return `<div class="sec-block"><div class="sec-inner" style="padding:1.2rem 1.4rem"><div class="empty-note">Cost per Revenue Overview gagal ditampilkan (${escapeHtml(err.message)}). Bagian lain dari Summary Overview tetap berjalan normal.</div></div></div>`;
+  }
+}
 function renderSummaryOverview(){
   const container=document.getElementById('summary-container');
   if(!container)return;
   const anyDone=PLATFORM_CONFIG.some(p=>platformState[p.key].done);
-  container.innerHTML=anyDone?renderSummaryContent(computeSummaryInsights()):renderSummaryPending();
+  container.innerHTML=renderSummaryBanner()+renderCostPerRevenueSafe()+(anyDone?renderSummaryContent(computeSummaryInsights()):renderSummaryPending());
   attachSectionDownloadButtons(container);
 }
 
@@ -2647,6 +3028,9 @@ function downloadReportPDF(btn){
 function downloadSummaryPDF(btn){
   exportElementToPDF(document.getElementById('summary-container'),'Performance Report.pdf',btn);
 }
+function downloadBusinessPDF(btn){
+  exportElementToPDF(document.getElementById('business-container'),'Business Overview.pdf',btn);
+}
 
 // ══════════════════════════════════════════════════════
 // PER-SECTION PNG EXPORT — adds a small "⬇ PNG" button to every
@@ -2672,6 +3056,20 @@ function sanitizeFilename(name){
   return name.replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,' ').trim();
 }
 
+// Overview+Detailed cards (renderOverviewDetailedCard) still show the
+// "Detailed" label + empty-note placeholder even when the user hasn't
+// added any detailed metric via the picker — cropping the PNG at that
+// point avoids exporting a dangling heading with nothing under it.
+function hideEmptyDetailedSection(block){
+  const label=[...block.querySelectorAll('.sub-table-label')].find(l=>!l.classList.contains('overview-label'));
+  const content=block.querySelector('[id^="content-"]');
+  if(!label||!content||content.querySelector('table'))return[];
+  const hidden=[content,label];
+  const divider=label.previousElementSibling;
+  if(divider&&divider.classList.contains('sub-table-divider'))hidden.push(divider);
+  hidden.forEach(el=>el.style.display='none');
+  return hidden;
+}
 async function downloadSectionPNG(btn){
   const block=btn.closest('.sec-block');
   if(!block)return;
@@ -2687,6 +3085,7 @@ async function downloadSectionPNG(btn){
   const originalHtml=btn.innerHTML;
   btn.disabled=true;
   document.body.classList.add('pdf-export-mode');
+  const hiddenEls=hideEmptyDetailedSection(block);
   try{
     const canvas=await html2canvas(block,{scale:2,backgroundColor:'#ffffff',useCORS:true});
     const link=document.createElement('a');
@@ -2697,6 +3096,7 @@ async function downloadSectionPNG(btn){
     console.error(err);
     alert('Gagal membuat gambar: '+err.message);
   }finally{
+    hiddenEls.forEach(el=>el.style.display='');
     document.body.classList.remove('pdf-export-mode');
     btn.disabled=false;
     btn.innerHTML=originalHtml;
@@ -2704,6 +3104,7 @@ async function downloadSectionPNG(btn){
 }
 
 updateSummaryBadge();
+updateTabBadge('business',bizBadgeLabel());
 </script>
 </body>
 </html>
