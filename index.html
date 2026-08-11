@@ -994,27 +994,42 @@ const DEFS={
   boostPost:    ['amount spent','profile visits','cost per profile visit'],
   nonBoost:     ['amount spent','purchases','purchases conversion value','roas'],
   nonBoostDemo: ['amount spent','cost per add to cart','cost per purchase','roas'],
-  cpasOverall:  ['amount spent','purchases with shared','purchases conversion value for shared','purchase roas for shared'],
-  cpasDemo:     ['amount spent','cost per atc','cost per purchase with shared','purchase roas for shared'],
-  cpasNV:       ['amount spent','purchases with shared','purchases conversion value for shared','purchase roas for shared'],
-  cpasRM:       ['amount spent','purchases with shared','purchases conversion value for shared','purchase roas for shared'],
+  cpasOverall:  ['amount spent','results','cost per result','purchases with shared','purchases conversion value for shared','purchase roas for shared'],
+  cpasDemo:     ['amount spent','cost per adds to cart','cost per add to cart','cost per purchase with shared','purchase roas for shared'],
+  cpasNV:       ['amount spent','results','cost per result','purchases with shared','purchases conversion value for shared','purchase roas for shared'],
+  cpasRM:       ['amount spent','results','cost per result','purchases with shared','purchases conversion value for shared','purchase roas for shared'],
 };
 const SKIP_COLS=['reporting starts','reporting ends','attribution setting','starts','ends'];
 const DIM_NAMES=['month','campaign name','age','gender'];
 const RATE_KW=['cost','cpm','cpc','cpa','cpp','ctr','ratio','rate','roas','frequency','per '];
 const RENAME_MAP=[
+  // NOTE: order matters — displayName() returns on the FIRST match, and every
+  // "Cost per X ... with shared items" header contains "X ... with shared
+  // items" as a literal substring (e.g. "Cost per purchases with shared
+  // items" contains "purchases with shared items"). So every "cost per ..."
+  // pattern below must be listed BEFORE its bare/base counterpart, or the
+  // cost column gets mislabeled with the base metric's name. Meta also
+  // varies singular/plural spelling per export ("purchase" vs "purchases",
+  // "add" vs "adds", "view" vs "views") so both variants are listed.
   {match:'purchases conversion value for shared items only',label:'Purchases Conversion Value'},
   {match:'purchase roas for shared items only',label:'ROAS'},
-  {match:'purchases with shared items',label:'Purchases'},
   {match:'cost per purchase with shared',label:'Cost per Purchase'},
-  {match:'cost per atc shared',label:'Cost per ATC'},
+  {match:'cost per purchases with shared',label:'Cost per Purchase'},
+  {match:'cost per atc with',label:'Cost per Add to Cart'},
+  {match:'cost per atc shared',label:'Cost per Add to Cart'},
+  {match:'cost per add to cart with shared',label:'Cost per Add to Cart'},
+  {match:'cost per adds to cart with shared',label:'Cost per Add to Cart'},
+  {match:'cost per content view with shared',label:'Cost per Content View'},
+  {match:'cost per content views with shared',label:'Cost per Content View'},
+  {match:'cost per reach',label:'Cost per Reach'},
+  {match:'cost per result',label:'Cost per Result'},
+  {match:'purchases with shared items',label:'Purchases'},
   {match:'adds to cart with shared items',label:'Add to Cart'},
   {match:'content views with shared items',label:'Content Views'},
-  {match:'cost per content view with shared',label:'Cost per Content View'},
   {match:'purchases conversion value',label:'Purchases Conversion Value'},
   {match:'purchases',label:'Purchases'},
   {match:'cost per purchase',label:'Cost per Purchase'},
-  {match:'cost per add to cart',label:'Cost per ATC'},
+  {match:'cost per add to cart',label:'Cost per Add to Cart'},
   {match:'adds to cart',label:'Add to Cart'},
 ];
 function displayName(col){const lc=col.toLowerCase();for(const r of RENAME_MAP){if(lc.includes(r.match))return r.label;}return col;}
@@ -1056,18 +1071,27 @@ function parseNum(v){
 const COST_PER_MAP=[
   {cost:'cost per checkout initiated', denom:'checkouts initiated'},
   {cost:'cost per profile visit',     denom:'profile visit'},
+  {cost:'cost per instagram profile', denom:'instagram profile visit'},
   {cost:'cost per follow',            denom:'instagram follow'},
   {cost:'cost per messaging conversation', denom:'messaging conversation'},
   {cost:'cost per total message',     denom:'total message'},
   {cost:'cost per message',           denom:'total message'},
   {cost:'cost per purchase with',     denom:'purchases with shared'},
+  {cost:'cost per purchases with',    denom:'purchases with shared'},
   {cost:'cost per purchase',          denom:'purchase'},
   {cost:'cost per atc with',          denom:'adds to cart with shared'},
+  {cost:'cost per adds to cart with', denom:'adds to cart with shared'},
   {cost:'cost per atc',               denom:'adds to cart'},
   {cost:'cost per add to cart',       denom:'adds to cart'},
+  {cost:'cost per adds to cart',      denom:'adds to cart'},
   {cost:'cost per content view with', denom:'content views with shared'},
+  {cost:'cost per content views with',denom:'content views with shared'},
+  {cost:'cost per view content with', denom:'content views with shared'},
   {cost:'cost per content view',      denom:'content view'},
-  {cost:'cost per result',            denom:'result'},
+  {cost:'cost per view content',      denom:'content view'},
+  {cost:'cost per reach',             denom:'reach'},
+  {cost:'cost per result',            denom:'results'},
+  {cost:'cost per revenue',           denom:'conversion value'},
   {cost:'cost per conversion',        denom:'conversion'},
   {cost:'cost per landing',           denom:'landing page view'},
   {cost:'cost per video',             denom:'video play'},
@@ -1147,6 +1171,13 @@ function agg(rows,col){
   // the campaign/age/gender/month breakdown rows this app works with, so summing
   // it would double-count overlapping audiences and understate true frequency.
   if(lc.includes('ratio')||lc.includes('frequency')){let s=0,c=0;rows.forEach(r=>{const v=parseNum(r[col]);if(v!==null){s+=v;c++;}});return c?s/c:null;}
+  if(lc.includes('average order value')||lc.includes('aov')){
+    const hs=Object.keys(rows[0]||{});
+    const revCol=hs.find(h=>{const h2=h.toLowerCase();return h2.includes('conversion value')&&!h2.includes('roas');});
+    const purCol=hs.find(h=>{const h2=h.toLowerCase();return h2.includes('purchase')&&!h2.includes('cost')&&!h2.includes('roas')&&!h2.includes('conversion value')&&!h2.includes('average order value')&&!h2.includes('aov');});
+    if(revCol&&purCol){const tr=aggSum(rows,revCol),tp=aggSum(rows,purCol);if(tr!==null&&tp!==null&&tp!==0)return tr/tp;}
+    return null;
+  }
   return aggSum(rows,col);
 }
 function fmt(val,col){
@@ -1155,7 +1186,7 @@ function fmt(val,col){
   if(lc.includes('roas'))return val.toFixed(2)+'x';
   if(lc.includes('ctr')||lc.includes('ratio'))return val.toFixed(2)+'%';
   if(lc.includes('frequency'))return val.toFixed(2);
-  if(lc.includes('cost')||lc.includes('cpm')||lc.includes('cpc')||lc.includes('cpa')||lc.includes('cpp')||lc.includes('spent')||lc.includes('spend'))
+  if(lc.includes('cost')||lc.includes('cpm')||lc.includes('cpc')||lc.includes('cpa')||lc.includes('cpp')||lc.includes('spent')||lc.includes('spend')||lc.includes('average order value')||lc.includes('aov'))
     return'Rp'+Math.round(val).toLocaleString('id-ID');
   if(lc.includes('conversion value')||lc.includes('revenue'))return'Rp'+Math.round(val).toLocaleString('id-ID');
   if(val>=1000)return Math.round(val).toLocaleString('id-ID');
