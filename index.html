@@ -1054,6 +1054,7 @@ function parseNum(v){
   return isNaN(n)?null:n;
 }
 const COST_PER_MAP=[
+  {cost:'cost per checkout initiated', denom:'checkouts initiated'},
   {cost:'cost per profile visit',     denom:'profile visit'},
   {cost:'cost per follow',            denom:'instagram follow'},
   {cost:'cost per messaging conversation', denom:'messaging conversation'},
@@ -1081,7 +1082,7 @@ const CTR_MAP=[
   {ctr:'outbound ctr',                  click:'outbound click'},
   {ctr:'ctr (all)',                     click:'clicks (all)'},
 ];
-function findDenomCol(rows,keyword){const hs=Object.keys(rows[0]||{});return hs.find(h=>h.toLowerCase().includes(keyword))||null;}
+function findDenomCol(rows,keyword,excludeCol){const hs=Object.keys(rows[0]||{});return hs.find(h=>h!==excludeCol&&h.toLowerCase().includes(keyword))||null;}
 function findSpentCol(rows){const hs=Object.keys(rows[0]||{});return hs.find(h=>h.toLowerCase().includes('amount spent'))||null;}
 function aggSum(rows,col){let s=0,found=false;rows.forEach(r=>{const v=parseNum(r[col]);if(v!==null){s+=v;found=true;}});return found?s:null;}
 function agg(rows,col){
@@ -1098,17 +1099,23 @@ function agg(rows,col){
     for(const map of COST_PER_MAP){
       if(lc.includes(map.cost)){
         const spentCol=findSpentCol(rows);
-        const denomCol=findDenomCol(rows,map.denom);
+        const denomCol=findDenomCol(rows,map.denom,col);
         if(spentCol&&denomCol){const ts=aggSum(rows,spentCol),td=aggSum(rows,denomCol);if(ts!==null&&td!==null&&td!==0)return ts/td;}
         return null;
       }
     }
     // Generic fallback: any unmatched "cost per X" → SUM(Spent)/SUM(X)
-    // Strip "cost per " prefix and search for matching denom col
+    // Strip "cost per " prefix and search for matching denom col. excludeCol=col
+    // guards against self-match: a "Cost per X" column's own header can contain
+    // the stripped keyword (e.g. "Cost per checkout initiated" contains "checkout
+    // initiated"), which — if the true denom column is named differently, like
+    // Meta's plural "Checkouts initiated" — would otherwise make this find the
+    // cost column itself as its own denominator and silently return a nonsense
+    // number instead of failing safely to "—".
     if(lc.startsWith('cost per ')){
       const denomKw=lc.replace(/^cost per\s+/,'').trim();
       const spentCol=findSpentCol(rows);
-      const denomCol=findDenomCol(rows,denomKw);
+      const denomCol=findDenomCol(rows,denomKw,col);
       if(spentCol&&denomCol){const ts=aggSum(rows,spentCol),td=aggSum(rows,denomCol);if(ts!==null&&td!==null&&td!==0)return ts/td;}
     }
     return null;
