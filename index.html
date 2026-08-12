@@ -1821,7 +1821,7 @@ function buildKPI(old,cur,cols){
     const{deltaNum,deltaStr}=(v1!==null&&v2!==null)?computeDelta(v1,v2):{deltaNum:null,deltaStr:'—'};
     const cls=deltaClass(deltaNum,col);
     return{col,val:fmt(v2,col),old:fmt(v1,col),delta:deltaStr,cls,deltaNum};
-  }).filter(m=>m.val!=='—');
+  });
 }
 function kpiTable(rows,p2){
   if(!rows.length)return'<div class="empty-note">Tidak ada data.</div>';
@@ -1875,14 +1875,13 @@ function renderPieChart(canvasId,labels,values){
 
 function demoTable(rows,dimCol,cols,p2,secId){
   if(!rows.length)return'<div class="empty-note">Tidak ada data.</div>';
+  if(!cols.length)return'<div class="empty-note" style="padding:.5rem 0 0">Klik "+ Tambah metrik" untuk menampilkan data.</div>';
   const grouped=groupByDim(rows,dimCol);
   const isAge=dimCol.toLowerCase().includes('age');
   const labels=Object.keys(grouped).sort((a,b)=>{
     if(isAge){const ia=AGE_ORDER.indexOf(a),ib=AGE_ORDER.indexOf(b);if(ia>=0&&ib>=0)return ia-ib;}
     return a.localeCompare(b);
   });
-  const validCols=cols.filter(c=>labels.some(l=>agg(grouped[l],c)!==null));
-  if(!validCols.length)return'<div class="empty-note">Tidak ada data metrik untuk segmen ini.</div>';
   const spentColKey=Object.keys(grouped[labels[0]]&&grouped[labels[0]][0]||{}).find(h=>h.toLowerCase().includes('amount spent'));
   let pieHtml='';
   if(spentColKey){
@@ -1897,8 +1896,8 @@ function demoTable(rows,dimCol,cols,p2,secId){
     pieHtml=`<div class="pie-wrap"><div class="pie-canvas-wrap"><canvas id="${canvasId}" width="340" height="300"></canvas></div><div><div style="font-size:.7rem;font-family:var(--m);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-weight:600">Amount Spent per ${isAge?'Age':'Gender'}</div><div class="pie-legend">${legendItems}</div></div></div>`;
     setTimeout(()=>renderPieChart(canvasId,pieLabels,pieVals),50);
   }
-  const thead=`<tr><th>${isAge?'Age':'Gender'}</th>${validCols.map(c=>`<th>${escapeHtml(displayName(c))}</th>`).join('')}</tr>`;
-  const tbody=labels.map(l=>`<tr><td>${escapeHtml(l)}</td>${validCols.map(c=>`<td>${fmt(agg(grouped[l],c),c)}</td>`).join('')}</tr>`).join('');
+  const thead=`<tr><th>${isAge?'Age':'Gender'}</th>${cols.map(c=>`<th>${escapeHtml(displayName(c))}</th>`).join('')}</tr>`;
+  const tbody=labels.map(l=>`<tr><td>${escapeHtml(l)}</td>${cols.map(c=>`<td>${fmt(agg(grouped[l],c),c)}</td>`).join('')}</tr>`).join('');
   return pieHtml+`<div class="tbl-scroll"><table class="demo-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
 }
 
