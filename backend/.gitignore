@@ -1,0 +1,12 @@
+node_modules
+dist
+*.log
+*.tsbuildinfo
+.DS_Store
+.env
+.neon
+
+# Real client business data (product names/categories/series) used as
+# one-off input to scripts/seed-product-master.js — same reasoning as the
+# root data/ rule: never committed, stays local.
+scripts/seed-data/
