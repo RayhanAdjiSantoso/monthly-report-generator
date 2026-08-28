@@ -1,7 +1,15 @@
 import type { ProductMasterEntry } from '../../lib/shopeeDeepDive';
 import type { Client, Platform, RawFileEntry, ReportDetail, ReportListItem, SaveReportPayload } from './types';
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'http://localhost:3001';
+// Defaults to '' (same-origin relative /api/... requests) — correct for the
+// Vercel deployment, where vercel.json rewrites /api/* to the backend
+// function on the same domain, so no cross-origin request (and no CSP
+// connect-src allowance) is ever needed. In local dev, vite.config.ts
+// proxies /api to the backend dev server, so this stays '' there too.
+// VITE_API_BASE_URL only needs to be set to point at a *separate-origin*
+// backend (e.g. Render) — an explicit '' must not fall back to the old
+// hardcoded localhost default, which is why this is `??` and not `||`.
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
 async function asJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
