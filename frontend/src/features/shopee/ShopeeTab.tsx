@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Dropzone } from '../../components/Dropzone';
 import { DownloadPdfButton } from '../../components/DownloadPdfButton';
@@ -14,7 +14,7 @@ import { StepIndicator, type Step } from '../../components/StepIndicator';
 import { usePeriodLabel } from '../../hooks/usePeriodLabel';
 import { toISODate } from '../../lib/dateFmt';
 import { parseShopeeCSV } from '../../lib/shopeeAds';
-import { categorizeProdukRows, mergeProdukOtomatis, type ProductMasterEntry } from '../../lib/shopeeDeepDive';
+import { categorizeProdukRows, mergeProdukOtomatis, mergeProductMaster, parseProductMasterRows, type ProductMasterEntry } from '../../lib/shopeeDeepDive';
 import { comparePeriodDays } from '../../lib/periodLabel';
 import { periodFromOverviewFilename } from '../../lib/shopeeOverview';
 import type { SheetRow } from '../../lib/types';
@@ -111,6 +111,9 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
   const [adsFiles, setAdsFiles] = useState(EMPTY_ADS_FILES);
   const [overviewFiles, setOverviewFiles] = useState(EMPTY_OVERVIEW_FILES);
   const [productPerformanceFile, setProductPerformanceFile] = useState<ProductPerformanceFileState | null>(null);
+  // Optional user-uploaded category reference (nama produk -> Category/Series),
+  // overlaid on top of the backend's product_master for this client.
+  const [productMasterRef, setProductMasterRef] = useState<{ entries: ProductMasterEntry[]; fileName: string } | null>(null);
 
   // Fase 3 — Shopee Deep-Dive: category/series lookup for the current
   // client, fetched fresh whenever the client changes.
@@ -132,6 +135,13 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
       cancelled = true;
     };
   }, [clientId]);
+
+  // What categorization actually runs against: the client's stored mapping
+  // with the uploaded reference file (if any) layered on top.
+  const effectiveProductMaster = useMemo(
+    () => mergeProductMaster(productMaster, productMasterRef?.entries ?? []),
+    [productMaster, productMasterRef],
+  );
 
   // Day counts of the last-parsed old/cur period (Fase 1) — used at Generate
   // time to warn when the two periods being compared aren't the same length.
@@ -250,6 +260,33 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
     }
   }
 
+  async function handleProductMasterRefFile(file: File) {
+    const basics = validateFileBasics(file, ['.csv', '.xlsx', '.xls']);
+    if (!basics.ok) {
+      setUploadError(basics.message || 'File tidak valid.');
+      return;
+    }
+    try {
+      const rows = await readSpreadsheetFile(file);
+      const parsed = parseProductMasterRows(rows);
+      if (!parsed.entries.length) {
+        setUploadError(
+          parsed.nameColumn && parsed.categoryColumn
+            ? 'File referensi kategori terbaca, tetapi tidak ada baris yang valid (nama produk + Category harus terisi).'
+            : 'File referensi kategori butuh minimal satu kolom nama produk dan satu kolom Category/Kategori.',
+        );
+        return;
+      }
+      setUploadError(null);
+      setProductMasterRef({ entries: parsed.entries, fileName: file.name });
+      setReport(null);
+      setDeepDive(null);
+      onInvalidate();
+    } catch (err) {
+      setUploadError('Gagal membaca isi file: ' + (err as Error).message);
+    }
+  }
+
   // Wajib: klien, Total Omzet Toko, dan Iklan Produk (2 periode). Semua
   // channel/file lain — Iklan Toko, Produk Otomatis, Toko-Keyword, Live,
   // Product Overview, Product Performance — opsional, insight tambahan saja.
@@ -297,7 +334,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
       tingkatkanDenganIklanRows: productPerformanceFile?.tingkatkanRows ?? null,
       overviewOldRows: overviewFiles['overview-old']?.rows ?? null,
       overviewCurRows: overviewFiles['overview-cur']?.rows ?? null,
-      productMaster,
+      productMaster: effectiveProductMaster,
       omzetOld: omzetOld ?? 0,
       omzetCur: omzetCur ?? 0,
       produkSelections,
@@ -323,7 +360,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
   useEffect(() => {
     if (report && deepDive) generate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productMaster, produkSelections, keywordSelections, dailyTrendSelections]);
+  }, [effectiveProductMaster, produkSelections, keywordSelections, dailyTrendSelections]);
 
   async function handleSaveCategory(name: string, category: string, series: string) {
     if (!clientId) return;
@@ -339,6 +376,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
     setAdsFiles(EMPTY_ADS_FILES);
     setOverviewFiles(EMPTY_OVERVIEW_FILES);
     setProductPerformanceFile(null);
+    setProductMasterRef(null);
     setPeriodOldDays(null);
     setPeriodCurDays(null);
     setPeriodOldRange(EMPTY_RANGE);
@@ -356,8 +394,8 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
   function buildSavePayload(): Omit<SaveReportPayload, 'brandId' | 'platform'> {
     const produkMergedOld = mergeProdukOtomatis(adsFiles['produk-old']?.rows ?? [], adsFiles['produk-otomatis-old']?.rows ?? []);
     const produkMergedCur = mergeProdukOtomatis(adsFiles['produk-cur']?.rows ?? [], adsFiles['produk-otomatis-cur']?.rows ?? []);
-    const catOld = categorizeProdukRows(produkMergedOld, 'Nama Iklan', productMaster);
-    const catCur = categorizeProdukRows(produkMergedCur, 'Nama Iklan', productMaster);
+    const catOld = categorizeProdukRows(produkMergedOld, 'Nama Iklan', effectiveProductMaster);
+    const catCur = categorizeProdukRows(produkMergedCur, 'Nama Iklan', effectiveProductMaster);
     const catMapOld: ShopeeCategorization = new Map(catOld.rows.map((cr) => [cr.row, { cleanName: cr.cleanName, category: cr.category, series: cr.series }]));
     const catMapCur: ShopeeCategorization = new Map(catCur.rows.map((cr) => [cr.row, { cleanName: cr.cleanName, category: cr.category, series: cr.series }]));
 
@@ -447,7 +485,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
           Buka halaman <strong>Performa Toko</strong> di Shopee Seller Center dan pilih status <strong>'Pesanan Dibuat'</strong>. Angka ini tidak tersedia di dalam file sehingga perlu diisi manual.
         </HowToStep>
         <HowToStep num={3} numClassName="shopee-num" title="(Opsional) Upload data untuk analisis mendalam">
-          Untuk analisis lebih dalam, tambahkan juga Iklan Produk Otomatis, Iklan Toko - Keyword (jika menggunakan iklan toko), Product Overview & Product Performance untuk insight tambahan. Semuanya opsional, laporan tetap bisa dibuat tanpanya.
+          Untuk analisis lebih dalam, tambahkan juga Iklan Produk Otomatis, Iklan Toko - Keyword (jika menggunakan iklan toko), Referensi Kategori Produk, Product Overview & Product Performance untuk insight tambahan. Semuanya opsional, laporan tetap bisa dibuat tanpanya.
         </HowToStep>
         <HowToStep num={4} numClassName="shopee-num" title="Upload file & generate laporan">
           Isi kolom Total Omzet, upload Iklan Produk, lalu klik <strong>Generate Laporan</strong>.
@@ -514,6 +552,28 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
         <div className="dz-grid-4">
           {adsDropzone('produk-otomatis-old', 'Periode Lalu')}
           {adsDropzone('produk-otomatis-cur', 'Periode Ini')}
+        </div>
+      </div>
+
+      <div className="source-block">
+        <div className="source-header">
+          <div className="source-label shopee-label">Referensi Kategori Produk</div>
+          <span className="sec-badge">opsional — memetakan nama produk ke Category &amp; Series</span>
+        </div>
+        <div className="empty-note" style={{ padding: '0 1.4rem .6rem' }}>
+          Satu file berisi kolom <strong>nama produk</strong>, <strong>Category</strong>, dan <strong>Series</strong> — dipakai untuk mengelompokkan produk di "Analisis Per Item". Tanpa file ini, produk yang belum terpetakan tetap bisa dilengkapi manual lewat panel "Produk Belum Terkategori".
+        </div>
+        <div className="dz-grid-4">
+          <Dropzone
+            tag="1 file · nama produk → Category / Series"
+            accept=".csv,.xlsx,.xls"
+            onFile={handleProductMasterRefFile}
+            loaded={Boolean(productMasterRef)}
+            fileName={productMasterRef?.fileName}
+            infoText={productMasterRef ? `${productMasterRef.entries.length} produk terpetakan` : undefined}
+            className="shopee-dz"
+            icon="🏷️"
+          />
         </div>
       </div>
 

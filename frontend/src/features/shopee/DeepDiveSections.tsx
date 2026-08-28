@@ -1,8 +1,9 @@
-import { Fragment, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { DeltaPill } from '../../components/DeltaPill';
 import { KpiTable, type KpiRowDisplay } from '../../components/KpiTable';
 import { MetricPicker } from '../../components/MetricPicker';
 import { SectionDownloadButton } from '../../components/SectionDownloadButton';
+import { SectionExcelButton } from '../../components/SectionExcelButton';
 import { reorderIds, useInlineMetricEditor } from '../../hooks/useInlineMetricEditor';
 import { validateFormula } from '../../lib/formula';
 import { DAILY_TREND_BUILTIN_METRICS, dailyTrendSelectionId, dailyTrendSelectionLabel, type DailyTrendMetricSelection, type DailyTrendPivotRow, type VariantPerformanceRow } from '../../lib/shopeeDeepDiveInsights';
@@ -34,9 +35,14 @@ export function ChannelPivotSection({ title, badge, rows, p1, p2 }: { title: str
 
 // ── Shared "N metric columns" table, reused by Per Produk, Per Keyword, and
 // the daily trend pivot — all 3 are structurally the same shape (a few
-// identity columns, then old/cur/%Chg per selected metric). Capped to ~10
-// visible rows with an internal scroll for the rest, per the user's request.
+// identity columns, then old/cur/%Chg per selected metric). Shows the first
+// VISIBLE_ROWS rows by default; the rest are reached by scrolling the table
+// body (the header stays pinned). The cap height is measured from the real
+// rendered header + first rows rather than guessed in pixels, so it lands on
+// exactly VISIBLE_ROWS regardless of column count, font, or row wrapping.
 // ══════════════════════════════════════════════════════
+
+const VISIBLE_ROWS = 10;
 
 interface GenericMetricCell {
   id: string;
@@ -104,6 +110,31 @@ function MultiMetricTable<T extends { metrics: GenericMetricCell[] }>({
 }) {
   const [sort, setSort] = useState<{ col: SortColumn; dir: 'asc' | 'desc' } | null>(null);
   const editor = useInlineMetricEditor({ onRename: onRenameMetric, onReorder: onReorderMetrics });
+
+  // Cap the scroll area to exactly the header + first VISIBLE_ROWS rows,
+  // measured from the live DOM so it's right no matter how tall a row wraps.
+  // `undefined` = no cap (everything already fits).
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    function measure() {
+      const table = scrollRef.current?.querySelector('table');
+      const head = table?.tHead;
+      const body = table?.tBodies[0];
+      if (!head || !body) return;
+      if (body.rows.length <= VISIBLE_ROWS) {
+        setMaxHeight(undefined);
+        return;
+      }
+      let h = head.getBoundingClientRect().height;
+      for (let i = 0; i < VISIBLE_ROWS; i++) h += body.rows[i].getBoundingClientRect().height;
+      setMaxHeight(Math.ceil(h) + 1);
+    }
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [rows]);
+
   if (!rows.length) return <div className="empty-note">{emptyMessage}</div>;
   const metricMeta = rows[0].metrics.map((m) => ({ id: m.id, label: labelOverrides?.[m.id] ?? m.label }));
 
@@ -141,8 +172,8 @@ function MultiMetricTable<T extends { metrics: GenericMetricCell[] }>({
   const thStyle: CSSProperties = { cursor: 'pointer', userSelect: 'none' };
 
   return (
-    <div style={{ maxHeight: TABLE_MAX_HEIGHT, overflow: 'auto' }}>
-      <table className="kpi-table">
+    <div ref={scrollRef} style={{ maxHeight, overflow: 'auto' }}>
+      <table className="kpi-table metric-wide-table">
         <thead>
           <tr style={{ position: 'sticky', top: 0, background: 'var(--s2)', zIndex: 1 }}>
             {identityHeaders.map((h, i) => {
@@ -152,16 +183,18 @@ function MultiMetricTable<T extends { metrics: GenericMetricCell[] }>({
                   {removableId ? (
                     <span className="metric-th-label-wrap">
                       <span>{h}</span>
-                      <span
-                        className="demo-th-remove-icon"
+                      <button
+                        type="button"
+                        className="metric-remove-btn"
                         title="Hapus kolom"
+                        aria-label="Hapus kolom"
                         onClick={(e) => {
                           e.stopPropagation();
                           onRemoveMetric(removableId);
                         }}
                       >
                         ×
-                      </span>
+                      </button>
                       {sortIndicator({ kind: 'identity', index: i })}
                     </span>
                   ) : (
@@ -179,9 +212,9 @@ function MultiMetricTable<T extends { metrics: GenericMetricCell[] }>({
                 <Fragment key={m.id}>
                   <th
                     className={`metric-th-editable${editor.dragClass(m.id)}`}
-                    style={{ ...thStyle, cursor: isEditing ? 'default' : 'pointer' }}
+                    style={{ ...thStyle, textAlign: 'left', cursor: isEditing ? 'default' : 'pointer' }}
                     onClick={() => !isEditing && handleHeaderClick({ kind: 'metric', index: mi, field: 'old' })}
-                    {...editor.dragHandlers(m.id)}
+                    {...editor.dropZoneProps(m.id)}
                   >
                     {isEditing ? (
                       <input
@@ -199,6 +232,17 @@ function MultiMetricTable<T extends { metrics: GenericMetricCell[] }>({
                     ) : (
                       <span className="metric-th-label-wrap">
                         <span
+                          className="metric-drag-handle"
+                          title="Tarik untuk mengubah urutan"
+                          aria-label="Tarik untuk mengubah urutan"
+                          onClick={(e) => e.stopPropagation()}
+                          {...editor.dragHandleProps(m.id)}
+                        >
+                          ☰
+                        </span>
+                        <span
+                          className="demo-th-label"
+                          title="Klik untuk ganti nama"
                           onClick={(e) => {
                             e.stopPropagation();
                             editor.startEdit(m.id, m.label);
@@ -206,35 +250,27 @@ function MultiMetricTable<T extends { metrics: GenericMetricCell[] }>({
                         >
                           {m.label} {p1}
                         </span>
-                        <span
-                          className="demo-th-edit-icon"
-                          title="Ganti nama"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            editor.startEdit(m.id, m.label);
-                          }}
-                        >
-                          ✏️
-                        </span>
-                        <span
-                          className="demo-th-remove-icon"
+                        <button
+                          type="button"
+                          className="metric-remove-btn"
                           title="Hapus metrik"
+                          aria-label="Hapus metrik"
                           onClick={(e) => {
                             e.stopPropagation();
                             onRemoveMetric(m.id);
                           }}
                         >
                           ×
-                        </span>
+                        </button>
                         {sortIndicator({ kind: 'metric', index: mi, field: 'old' })}
                       </span>
                     )}
                   </th>
-                  <th style={thStyle} onClick={() => handleHeaderClick({ kind: 'metric', index: mi, field: 'cur' })}>
+                  <th style={{ ...thStyle, textAlign: 'left' }} onClick={() => handleHeaderClick({ kind: 'metric', index: mi, field: 'cur' })}>
                     {m.label} {p2}
                     {sortIndicator({ kind: 'metric', index: mi, field: 'cur' })}
                   </th>
-                  <th style={thStyle} onClick={() => handleHeaderClick({ kind: 'metric', index: mi, field: 'delta' })}>
+                  <th style={{ ...thStyle, textAlign: 'left' }} onClick={() => handleHeaderClick({ kind: 'metric', index: mi, field: 'delta' })}>
                     %Chg {m.label}
                     {sortIndicator({ kind: 'metric', index: mi, field: 'delta' })}
                   </th>
@@ -455,6 +491,7 @@ export function ItemPivotSection({
     <div className="sec-block">
       <div className="sec-heading shopee-heading">
         Analisis Per Item <span className="sec-badge">Iklan Toko + Iklan Produk</span>
+        <SectionExcelButton />
         <SectionDownloadButton />
       </div>
       <div style={{ padding: '1rem 1.4rem 0', display: 'flex', gap: '.5rem' }}>
@@ -530,8 +567,7 @@ export function UncategorizedPanel({ names, onSave }: { names: string[]; onSave:
         <div className="empty-note" style={{ paddingBottom: '.8rem' }}>
           Nama iklan berikut belum cocok dengan kategori/series manapun. Isi lalu simpan untuk melengkapi pemetaannya — laporan akan otomatis diperbarui.
         </div>
-        {/* Capped to ~10 visible rows with an internal scroll for the rest,
-            same as Analisis Per Item's tables (TABLE_MAX_HEIGHT). */}
+        {/* Capped to ~10 visible rows with an internal scroll for the rest. */}
         <div style={{ maxHeight: TABLE_MAX_HEIGHT, overflow: 'auto' }}>
           {names.map((name) => (
             <UncategorizedRow key={name} name={name} onSave={onSave} />
@@ -583,6 +619,7 @@ export function UnadvertisedVariantsTable({ rows, hasFile }: { rows: VariantPerf
     <div className="sec-block">
       <div className="sec-heading shopee-heading">
         Laku tapi Belum Pernah Diiklankan <span className="sec-badge">Product Performance</span>
+        <SectionExcelButton />
         <SectionDownloadButton />
       </div>
       <div style={{ padding: '.6rem 1.4rem 1.4rem' }}>
@@ -608,7 +645,7 @@ export function UnadvertisedVariantsTable({ rows, hasFile }: { rows: VariantPerf
                 {displayRows.map((r, i) => (
                   <tr key={r.kodeProduk + '|' + r.kodeVariasi + i}>
                     <td>{r.produk}</td>
-                    <td>{r.namaVariasi}</td>
+                    <td style={{ textAlign: 'left' }}>{r.namaVariasi}</td>
                     <td>{r.kodeProduk}</td>
                     <td>{fmtPivotVal(r.penjualanSiapDikirim, 'rp')}</td>
                   </tr>
@@ -696,6 +733,7 @@ export function DailyTrendSection({
     <div className="sec-block">
       <div className="sec-heading shopee-heading">
         Tren Harian Toko <span className="sec-badge">Product Overview</span>
+        <SectionExcelButton />
         <SectionDownloadButton />
       </div>
       <div style={{ padding: '1rem 1.4rem 0', display: 'flex', gap: '.6rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>

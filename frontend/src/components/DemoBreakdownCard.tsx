@@ -5,6 +5,7 @@ import type { SheetRow } from '../lib/types';
 import { MetricPicker } from './MetricPicker';
 import { PIE_COLORS, PieChartCanvas } from './PieChartCanvas';
 import { SectionDownloadButton } from './SectionDownloadButton';
+import { SectionExcelButton } from './SectionExcelButton';
 
 interface DemoBreakdownCardProps {
   heading: string;
@@ -80,6 +81,7 @@ export function DemoBreakdownCard({ heading, badge, rows, dimCol, allCols, defau
       <div className={`sec-heading${headingClassName ? ' ' + headingClassName : ''}`}>
         {heading}
         {badge && <span className="sec-badge">{badge}</span>}
+        <SectionExcelButton />
         <SectionDownloadButton />
       </div>
       <MetricPicker allCols={allCols} activeCols={activeCols} onChange={setActiveCols} labelFn={resolveLabel} />
@@ -124,9 +126,9 @@ export function DemoBreakdownCard({ heading, badge, rows, dimCol, allCols, defau
                       <th
                         key={c}
                         className={`demo-th-editable${editor.dragClass(c)}`}
-                        style={{ cursor: isEditing ? 'default' : 'pointer', userSelect: 'none' }}
+                        style={{ cursor: isEditing ? 'default' : 'pointer', userSelect: 'none', textAlign: 'left' }}
                         onClick={() => !isEditing && toggleSort(c)}
-                        {...editor.dragHandlers(c)}
+                        {...editor.dropZoneProps(c)}
                       >
                         {isEditing ? (
                           <input
@@ -144,7 +146,17 @@ export function DemoBreakdownCard({ heading, badge, rows, dimCol, allCols, defau
                         ) : (
                           <span className="demo-th-label-wrap">
                             <span
+                              className="metric-drag-handle"
+                              title="Tarik untuk mengubah urutan"
+                              aria-label="Tarik untuk mengubah urutan"
+                              onClick={(e) => e.stopPropagation()}
+                              {...editor.dragHandleProps(c)}
+                            >
+                              ☰
+                            </span>
+                            <span
                               className="demo-th-label"
+                              title="Klik untuk ganti nama"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 editor.startEdit(c, resolveLabel(c));
@@ -152,26 +164,18 @@ export function DemoBreakdownCard({ heading, badge, rows, dimCol, allCols, defau
                             >
                               {resolveLabel(c)}
                             </span>
-                            <span
-                              className="demo-th-edit-icon"
-                              title="Ganti nama"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                editor.startEdit(c, resolveLabel(c));
-                              }}
-                            >
-                              ✏️
-                            </span>
-                            <span
-                              className="demo-th-remove-icon"
+                            <button
+                              type="button"
+                              className="metric-remove-btn"
                               title="Hapus metrik"
+                              aria-label="Hapus metrik"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleRemove(c);
                               }}
                             >
                               ×
-                            </span>
+                            </button>
                             {sortIndicator(c)}
                           </span>
                         )}

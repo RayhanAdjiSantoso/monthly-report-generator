@@ -148,6 +148,10 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .sec-heading.summary-heading::before{background:linear-gradient(180deg,var(--sum),var(--cyan))}
 .sec-badge{font-size:.62rem;background:#fff;border:1px solid var(--border);border-radius:5px;padding:.15rem .55rem;color:var(--muted);font-weight:600;letter-spacing:.03em}
 .sec-download-btn{margin-left:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:4px;font-size:.62rem;background:#fff;border:1px solid var(--border);border-radius:5px;padding:.2rem .55rem;color:var(--muted);font-weight:700;letter-spacing:.02em;cursor:pointer;transition:all .15s}
+/* When a section has more than one download button (e.g. Excel + PNG), only
+   the first pushes off the auto-margin so the rest sit right next to it
+   (the .sec-heading flex `gap` spaces them) instead of splitting the row. */
+.sec-download-btn~.sec-download-btn{margin-left:0}
 .sec-download-btn:hover{color:var(--acc);border-color:var(--acc)}
 .sec-download-btn:disabled{opacity:.6;cursor:default}
 
@@ -180,13 +184,16 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .delta-arrow{font-size:.75em;line-height:1}
 @media print{.delta-pill{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 
-/* ── Demo Table ── */
+/* ── Demo Table ──
+   A wide "add metric columns to the side" table: every header and every
+   value is left-aligned so a column that's scrolled partway into view still
+   reads cleanly and lines up with its header (numeric right-align only
+   helped when whole columns were visible at once). */
 .demo-table{width:100%;border-collapse:collapse}
 .demo-table thead tr{background:var(--s2)}
-.demo-table th{padding:.55rem 1rem;font-size:.67rem;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;text-transform:uppercase;letter-spacing:.05em}
-.demo-table th:first-child{text-align:left}
-.demo-table td{padding:.55rem 1rem;text-align:right;font-size:.85rem;border-bottom:1px solid var(--border);color:var(--text)}
-.demo-table td:first-child{text-align:left;font-weight:600}
+.demo-table th{padding:.55rem 1rem;font-size:.67rem;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;text-transform:uppercase;letter-spacing:.05em}
+.demo-table td{padding:.55rem 1rem;text-align:left;font-size:.85rem;border-bottom:1px solid var(--border);color:var(--text)}
+.demo-table td:first-child{font-weight:600}
 .demo-table td.num{font-variant-numeric:tabular-nums lining-nums;font-weight:600}
 .demo-table tr:last-child td{border-bottom:none}
 .demo-table tr:hover td{background:#f6f8fe}
@@ -211,33 +218,66 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .metric-picker-dense{padding:0 0 .6rem}
 
 /* ── Inline in-table metric editing (row-form: KpiTable; column-form: demo/
-   multi-metric tables) — hover a metric's name to reveal a rename (✏️) and
-   remove (×) affordance, click the name (or the pencil) to rename inline,
-   click-and-hold anywhere on the row/column header to drag-reorder it. No
+   multi-metric tables) — click a metric's name to rename it inline, drag
+   the ☰ handle to reorder. The ☰ handle is the ONLY drag trigger — the
+   name/value never start a drag. The × remove button sits alongside. No
    separate pill/list control. ── */
-.kpi-row-editable{cursor:grab}
+.kpi-row-editable{cursor:default}
 .kpi-row-editable.dragging{opacity:.4}
 .kpi-row-editable.drag-over td{box-shadow:inset 0 2px 0 var(--acc)}
 .kpi-row-label-wrap{display:inline-flex;align-items:center;gap:5px}
 .kpi-row-label{cursor:text}
 .kpi-row-label:hover{color:var(--acc)}
-.kpi-row-edit-icon,.kpi-row-remove-icon{opacity:0;transition:opacity .12s;cursor:pointer;font-size:.85em;line-height:1}
-.kpi-row-editable:hover .kpi-row-edit-icon,.kpi-row-editable:hover .kpi-row-remove-icon{opacity:.6}
-.kpi-row-edit-icon:hover,.kpi-row-remove-icon:hover{opacity:1!important}
-.kpi-row-remove-icon:hover{color:var(--bad)}
 .kpi-row-input{font:inherit;font-weight:600;color:inherit;border:1.5px solid var(--acc);border-radius:4px;padding:.05rem .3rem;width:auto;min-width:80px;background:var(--surface)}
 
-.demo-th-editable,.metric-th-editable{cursor:grab}
 .demo-th-editable.dragging,.metric-th-editable.dragging{opacity:.4}
 .demo-th-editable.drag-over,.metric-th-editable.drag-over{box-shadow:inset 0 2px 0 var(--acc)}
-.demo-th-label-wrap,.metric-th-label-wrap{display:inline-flex;align-items:center;gap:5px;justify-content:flex-end}
+.demo-th-label-wrap,.metric-th-label-wrap{display:inline-flex;align-items:center;gap:5px;justify-content:flex-start}
 .demo-th-label{cursor:text}
 .demo-th-label:hover{color:var(--acc)}
-.demo-th-edit-icon,.demo-th-remove-icon{opacity:0;transition:opacity .12s;cursor:pointer;font-size:.95em;line-height:1;text-transform:none;font-weight:400;letter-spacing:normal}
-th:hover .demo-th-edit-icon,th:hover .demo-th-remove-icon{opacity:.6}
-.demo-th-edit-icon:hover,.demo-th-remove-icon:hover{opacity:1!important}
-.demo-th-remove-icon:hover{color:var(--bad)}
 .demo-th-input,.metric-th-input{font:inherit;font-weight:600;color:inherit;border:1.5px solid var(--acc);border-radius:4px;padding:.05rem .3rem;width:auto;min-width:70px;background:var(--surface);text-transform:none}
+
+/* Multi-metric wide table (Analisis Per Item, Tren Harian) — shares the
+   .kpi-table skin but, like .demo-table, left-aligns every header and value
+   so off-screen columns still line up under their headers. */
+.kpi-table.metric-wide-table th,
+.kpi-table.metric-wide-table td{text-align:left}
+
+/* ☰ drag handle — the sole reorder trigger, shared by every editable table.
+   Visible but quiet by default, firmer on hover. grab / grabbing cursors. */
+.metric-drag-handle{
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
+  width:1.05em;height:1.15em;padding:2px;margin:-2px 1px -2px -3px;
+  cursor:grab;color:var(--muted2);opacity:.5;font-size:.9em;line-height:1;
+  text-transform:none;font-weight:400;letter-spacing:normal;
+  transition:opacity .12s,color .12s;-webkit-user-select:none;user-select:none;
+  touch-action:none;
+}
+.kpi-row-editable:hover .metric-drag-handle,th:hover .metric-drag-handle{opacity:.75}
+.metric-drag-handle:hover{opacity:1;color:var(--acc)}
+.metric-drag-handle:active,.dragging .metric-drag-handle{cursor:grabbing}
+
+/* × remove button — enlarged icon AND hit area (negative margin keeps the
+   larger target from shifting the row/header layout). Reveal-on-hover to
+   stay unobtrusive on a report full of metric rows. */
+.metric-remove-btn{
+  appearance:none;background:none;border:0;
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
+  font:inherit;font-size:1.15rem;font-weight:400;line-height:1;
+  text-transform:none;letter-spacing:normal;
+  min-width:1.5rem;min-height:1.5rem;padding:0 .3rem;
+  margin:-.5rem 0;
+  color:var(--muted2);cursor:pointer;opacity:0;
+  transition:opacity .12s,color .12s;border-radius:5px;
+}
+.kpi-row-editable:hover .metric-remove-btn,th:hover .metric-remove-btn{opacity:.65}
+.metric-remove-btn:hover{opacity:1;color:var(--bad);background:var(--bad-100)}
+.metric-remove-btn:focus-visible{opacity:1;outline:2px solid var(--acc);outline-offset:1px}
+@media(hover:none){
+  /* No hover on touch devices — keep the ☰/× affordances reachable. */
+  .metric-remove-btn{opacity:.55}
+  .metric-drag-handle{opacity:.7}
+}
 
 .mpill{display:inline-flex;align-items:center;gap:4px;background:var(--s2);border:1.5px solid var(--border);border-radius:6px;padding:.22rem .6rem;font-size:.67rem;font-weight:600;cursor:pointer;transition:all .15s;user-select:none;color:var(--muted)}
 .mpill.on{background:var(--acc-100);border-color:var(--acc);color:var(--acc)}
@@ -261,7 +301,8 @@ th:hover .demo-th-edit-icon,th:hover .demo-th-remove-icon{opacity:.6}
 .howto-step-num.tiktok-num{background:var(--tiktok)}
 
 @media print{
-  .source-block,#cta,.action-row,.metric-picker,.add-metric-wrap,.platform-tabs,.omzet-row,.period-labels,.period-input-row{display:none!important}
+  .source-block,#cta,.action-row,.metric-picker,.add-metric-wrap,.platform-tabs,.omzet-row,.period-labels,.period-input-row,
+  .metric-drag-handle,.metric-remove-btn{display:none!important}
   body{background:#fff;color:#111}
   #report{margin-top:0}
   .report-top{background:#1e3eb8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -270,6 +311,8 @@ th:hover .demo-th-edit-icon,th:hover .demo-th-remove-icon{opacity:.6}
 
 .pdf-export-mode .metric-picker{display:none!important}
 .pdf-export-mode .sec-download-btn{display:none!important}
+.pdf-export-mode .metric-drag-handle,
+.pdf-export-mode .metric-remove-btn{display:none!important}
 
 /* ── Period input ── */
 .period-input-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem}

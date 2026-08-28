@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
 import { detectShopeeHeaderRow, parseShopeeCSV } from '../shopeeAds';
-import { categorizeProdukRows, cleanAdName, matchProductMaster, mergeProdukOtomatis, UNCATEGORIZED, type ProductMasterEntry } from '../shopeeDeepDive';
+import { categorizeProdukRows, cleanAdName, matchProductMaster, mergeProdukOtomatis, mergeProductMaster, parseProductMasterRows, UNCATEGORIZED, type ProductMasterEntry } from '../shopeeDeepDive';
 import type { SheetRow } from '../types';
 
 // Fixtures are real exports from the "Maiimi" Shopee store (see
@@ -172,5 +172,62 @@ describe('Iklan Toko - Keyword is a breakdown of Iklan Toko, not additive spend'
     const campaignBiaya = Number(toko.find((r) => r['Nama Iklan'] === campaignName)!['Biaya']);
     const kwSum = kw.filter((r) => r['Nama Iklan'] === campaignName).reduce((s, r) => s + Number(r['Biaya']), 0);
     expect(Math.abs(campaignBiaya - kwSum)).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('parseProductMasterRows — optional uploaded category reference', () => {
+  it('reads the canonical nama_produk/category/series columns', () => {
+    const rows: SheetRow[] = [
+      { nama_produk: 'Maiimi - Rose Champagne Bath Bomb', category: 'Bath Bomb', series: 'Rose Series' },
+      { nama_produk: 'Naked Bath Salt: Goodbye Odor', category: 'Naked Bath Salt', series: '' },
+    ];
+    const parsed = parseProductMasterRows(rows);
+    expect(parsed.nameColumn).toBe('nama_produk');
+    expect(parsed.categoryColumn).toBe('category');
+    expect(parsed.entries).toEqual([
+      { namaProdukClean: 'Maiimi - Rose Champagne Bath Bomb', category: 'Bath Bomb', series: 'Rose Series' },
+      // series falls back to the category when the sheet leaves it blank
+      { namaProdukClean: 'Naked Bath Salt: Goodbye Odor', category: 'Naked Bath Salt', series: 'Naked Bath Salt' },
+    ]);
+  });
+
+  it('matches loose Indonesian header names, any casing/order, and strips the [n] suffix', () => {
+    const rows: SheetRow[] = [{ Kategori: 'Giftset', 'Nama Produk': 'Maiimi - Wine & Wander Bath Bomb [3]', Seri: 'Giftset' }];
+    const parsed = parseProductMasterRows(rows);
+    expect(parsed.entries).toEqual([{ namaProdukClean: 'Maiimi - Wine & Wander Bath Bomb', category: 'Giftset', series: 'Giftset' }]);
+  });
+
+  it('skips rows with a blank name or blank category, last duplicate wins', () => {
+    const rows: SheetRow[] = [
+      { nama_produk: '', category: 'X', series: '' },
+      { nama_produk: 'Produk A', category: '', series: '' },
+      { nama_produk: 'Produk B', category: 'First', series: '' },
+      { nama_produk: 'produk b', category: 'Second', series: '' },
+    ];
+    expect(parseProductMasterRows(rows).entries).toEqual([{ namaProdukClean: 'produk b', category: 'Second', series: 'Second' }]);
+  });
+
+  it('reports which columns were missing when it cannot build any entries', () => {
+    const parsed = parseProductMasterRows([{ foo: 'bar', category: 'X' }]);
+    expect(parsed.entries).toEqual([]);
+    expect(parsed.nameColumn).toBeNull();
+    expect(parsed.categoryColumn).toBe('category');
+  });
+});
+
+describe('mergeProductMaster — uploaded reference overlays the stored mapping', () => {
+  const base: ProductMasterEntry[] = [
+    { namaProdukClean: 'Produk A', category: 'Old A', series: 'S1' },
+    { namaProdukClean: 'Produk B', category: 'B', series: 'S2' },
+  ];
+  it('keeps base entries and lets same-name overlay entries win (case-insensitive)', () => {
+    const merged = mergeProductMaster(base, [{ namaProdukClean: 'produk a', category: 'New A', series: 'S9' }]);
+    expect(merged).toEqual([
+      { namaProdukClean: 'produk a', category: 'New A', series: 'S9' },
+      { namaProdukClean: 'Produk B', category: 'B', series: 'S2' },
+    ]);
+  });
+  it('returns the base untouched when there is no overlay', () => {
+    expect(mergeProductMaster(base, [])).toBe(base);
   });
 });
