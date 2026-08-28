@@ -46,10 +46,9 @@ function rowId(r: KpiRowDisplay): string {
 // the only table shape actually used by the current report (the plain
 // single-period kpiTable variant was dead code in the original, unreachable
 // from generate()). Every row-form metric table in the app now shares this
-// engine directly: hover a row's label to see a rename (✏️) affordance and a
-// remove (×) affordance, click the label (or the pencil) to rename inline,
-// click-and-hold anywhere on the row to drag it to a new position. Removed
-// rows go back into "+ Tambah metrik".
+// engine directly: click a row's label to rename it inline, hover to reveal
+// the remove (×) affordance, drag the ☰ handle to move the row to a new
+// position. Removed rows go back into "+ Tambah metrik".
 export function KpiTable({ rows, defaultVisibleIds, p1, p2, emptyMessage, padded }: KpiTableProps) {
   const metricRows = rows.filter((r) => !r.isTotal);
   const totalRow = rows.find((r) => r.isTotal);
@@ -90,7 +89,7 @@ export function KpiTable({ rows, defaultVisibleIds, p1, p2, emptyMessage, padded
             const id = rowId(r);
             const isEditing = editor.editingId === id;
             return (
-              <tr key={id} className={`kpi-row-editable${editor.dragClass(id)}`} {...editor.dragHandlers(id)}>
+              <tr key={id} className={`kpi-row-editable${editor.dragClass(id)}`} {...editor.dropZoneProps(id)}>
                 <td>
                   {isEditing ? (
                     <input
@@ -106,15 +105,26 @@ export function KpiTable({ rows, defaultVisibleIds, p1, p2, emptyMessage, padded
                     />
                   ) : (
                     <span className="kpi-row-label-wrap">
-                      <span className="kpi-row-label" onClick={() => editor.startEdit(id, resolveLabel(id))}>
+                      <span
+                        className="metric-drag-handle"
+                        title="Tarik untuk mengubah urutan"
+                        aria-label="Tarik untuk mengubah urutan"
+                        {...editor.dragHandleProps(id)}
+                      >
+                        ☰
+                      </span>
+                      <span className="kpi-row-label" title="Klik untuk ganti nama" onClick={() => editor.startEdit(id, resolveLabel(id))}>
                         {resolveLabel(id)}
                       </span>
-                      <span className="kpi-row-edit-icon" title="Ganti nama" onClick={() => editor.startEdit(id, resolveLabel(id))}>
-                        ✏️
-                      </span>
-                      <span className="kpi-row-remove-icon" title="Hapus metrik" onClick={() => handleRemove(id)}>
+                      <button
+                        type="button"
+                        className="metric-remove-btn"
+                        title="Hapus metrik"
+                        aria-label="Hapus metrik"
+                        onClick={() => handleRemove(id)}
+                      >
                         ×
-                      </span>
+                      </button>
                     </span>
                   )}
                 </td>

@@ -1,10 +1,16 @@
 import { useState, type DragEvent } from 'react';
 
-// Shared "click name to rename, click-and-hold to drag-reorder" interaction
+// Shared "click name to rename, drag the ☰ handle to reorder" interaction
 // used directly on table rows/column headers (KpiTable, DemoBreakdownCard,
 // MultiMetricTable) — no separate pill/list control. This hook only owns the
 // ephemeral UI state (which id is being edited/dragged); the caller owns
 // where the renamed label and the new order actually get stored.
+//
+// Reorder is triggered ONLY by the dedicated drag handle: `dragHandleProps`
+// goes on the ☰ icon (the sole `draggable` element), while `dropZoneProps`
+// goes on the whole row / column header so it can still receive the drop.
+// The metric name and value are never draggable, so a click — or a
+// click-and-hold — on them keeps working as before and never starts a drag.
 export function useInlineMetricEditor({ onRename, onReorder }: { onRename: (id: string, newLabel: string) => void; onReorder: (fromId: string, toId: string) => void }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
@@ -23,25 +29,47 @@ export function useInlineMetricEditor({ onRename, onReorder }: { onRename: (id: 
     setEditingId(null);
   }
 
-  function dragHandlers(id: string) {
+  function clearDrag() {
+    setDragId(null);
+    setDragOverId(null);
+  }
+
+  // Props for the ☰ drag handle only — the one element that starts a
+  // reorder drag.
+  function dragHandleProps(id: string) {
     return {
-      draggable: editingId !== id,
-      onDragStart: () => setDragId(id),
+      draggable: true,
+      onDragStart: (e: DragEvent) => {
+        e.stopPropagation();
+        try {
+          // Firefox refuses to start a drag unless dataTransfer is set.
+          e.dataTransfer.setData('text/plain', id);
+          e.dataTransfer.effectAllowed = 'move';
+        } catch {
+          /* some browsers disallow touching dataTransfer in onDragStart */
+        }
+        setDragId(id);
+      },
+      onDragEnd: clearDrag,
+    };
+  }
+
+  // Props for the row / column header that can receive a drop — never makes
+  // the element itself draggable.
+  function dropZoneProps(id: string) {
+    return {
       onDragOver: (e: DragEvent) => {
+        if (dragId === null) return;
         e.preventDefault();
-        if (dragId !== null) setDragOverId(id);
+        setDragOverId(id);
       },
       onDragLeave: () => setDragOverId((prev) => (prev === id ? null : prev)),
       onDrop: (e: DragEvent) => {
         e.preventDefault();
         if (dragId !== null && dragId !== id) onReorder(dragId, id);
-        setDragId(null);
-        setDragOverId(null);
+        clearDrag();
       },
-      onDragEnd: () => {
-        setDragId(null);
-        setDragOverId(null);
-      },
+      onDragEnd: clearDrag,
     };
   }
 
@@ -52,7 +80,7 @@ export function useInlineMetricEditor({ onRename, onReorder }: { onRename: (id: 
     return cls;
   }
 
-  return { editingId, editingValue, setEditingValue, startEdit, commitEdit, cancelEdit, dragHandlers, dragClass };
+  return { editingId, editingValue, setEditingValue, startEdit, commitEdit, cancelEdit, dragHandleProps, dropZoneProps, dragClass };
 }
 
 // Reorders `order` by moving `fromId` to sit right where `toId` was — shared
