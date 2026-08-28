@@ -1,48 +1,55 @@
 # Security notes
 
-## Content-Security-Policy — why `'unsafe-inline'` is there
+This project moved from a single vanilla-JS `index.html` to a React
+frontend (`frontend/`) + Express/Postgres backend (`backend/`). The notes
+below describe the current architecture; see git history for the older
+vanilla-JS version's own notes if needed.
 
-`vercel.json`'s CSP allows `'unsafe-inline'` for both `script-src` and
-`style-src`. This is a deliberate, temporary tradeoff, not an oversight —
-`vercel.json` is strict JSON and can't hold a comment explaining it inline,
-so it's documented here instead.
+## Content-Security-Policy
 
-**Why it's needed today:** `index.html` uses inline event-handler attributes
-throughout (`onclick="switchTab('meta')"`, `onclick="addMetric(...)"`, etc.)
-and inline `style="..."` attributes on many elements. A CSP without
-`'unsafe-inline'` on `script-src` would block every one of those handlers
-from firing — the app would load but nothing would be clickable.
+`vercel.json`'s CSP no longer needs `'unsafe-inline'` on `script-src`.
+That allowance existed for the old `index.html`'s inline `onclick="..."`
+handlers — JSX event handlers (`onClick={...}`) aren't inline HTML
+attributes, they're wired up by React itself, so nothing in the built
+output needs inline script execution. Verified directly: `frontend/dist/index.html`
+loads only external, hashed `<script>`/`<link>` files, no inline `<script>`
+blocks.
 
-**What removing it would require:** replacing every inline `onclick="..."`
-attribute with `addEventListener` calls wired up in JavaScript (e.g. via a
-single delegated listener on `#app` keyed off `data-action` attributes), and
-moving inline `style="..."` attributes to CSS classes or a nonce-based
-`style-src`. This is a real refactor touching most of the render functions
-in `index.html` (`renderPicker`, `renderSection`, `demoTable`, `kpiTable`,
-`renderOverviewDetailedCard`, `renderSummaryContent`, and more) — intentionally
-out of scope for this hardening pass, which focused on fixing the actual
-vulnerability (unescaped HTML injection, see below) rather than restructuring
-the event-handling architecture.
+`style-src` still allows `'unsafe-inline'`, and that's a real, current
+need rather than legacy: components across the app use inline
+`style={{...}}` (rendered as `style="..."` attributes), which CSP's
+`style-src` treats the same way regardless of framework. Removing it would
+mean moving every one of those to CSS classes — not done.
 
-**What the current CSP still buys you** even with `'unsafe-inline'`: it blocks
-loading scripts/styles from any origin other than `cdnjs.cloudflare.com`,
-`cdn.sheetjs.com`, and `fonts.googleapis.com`, blocks the page from being framed by another site
-(`frame-ancestors 'none'`, clickjacking protection), and restricts
-`object-src`/`base-uri`. It does **not** stop inline-script-based XSS by
-itself — that protection comes from the escaping fix below.
+What the CSP restricts: scripts/styles only from `'self'` and
+`fonts.googleapis.com`/`fonts.gstatic.com`, no framing by another site
+(`frame-ancestors 'none'`), and restricted `object-src`/`base-uri`.
 
-## XSS fix — the actual mitigation
+## XSS
 
-Every place that inserts a filename, Excel/CSV column header, or a
-dimension/cell value (Age/Gender bucket, custom period label, etc.) into the
-DOM now goes through `escapeHtml()` (or `jsAttrEscape()` for values embedded
-inside an inline `onclick="..."` attribute) before reaching `innerHTML`.
-This is the real fix for the stored-XSS risk found in the security audit —
-the CSP above is defense-in-depth on top of it, not a substitute for it.
+React escapes all JSX text interpolation (`{value}`) by default — this is
+the actual mitigation now, not a manual `escapeHtml()`/`jsAttrEscape()` step
+like the old `index.html` needed. Verified: no `dangerouslySetInnerHTML` or
+raw `innerHTML` assignment anywhere in `frontend/src`, so nothing in the
+app opts out of that default escaping.
 
 ## Upload validation
 
-`validateFileBasics()`, `requireSheet()`, and `requireColumns()` in
-`index.html` reject files before parsing starts if the extension isn't
-`.csv`/`.xlsx`/`.xls`, the file is empty or over 20MB, the workbook has no
-readable sheet, or the required columns for that platform are missing.
+Same protections as before, now living in `frontend/src/lib/validation.ts`
+(`validateFileBasics`, `requireColumns`) and `frontend/src/lib/xlsxUtils.ts`
+(`requireSheet`): a file is rejected before parsing starts if the extension
+isn't `.csv`/`.xlsx`/`.xls`, it's empty or over 20MB, the workbook has no
+readable sheet, or the platform's required columns are missing.
+
+## Backend (new — didn't exist in the vanilla-JS version)
+
+- **SQL injection**: every query is parameterized (`$1, $2, ...`), including
+  the bulk-insert helper (`backend/src/sqlHelpers.ts`'s `buildBulkInsert`) —
+  no string-interpolated SQL anywhere in `backend/src`.
+- **CORS**: `CORS_ORIGIN` is env-driven (`backend/src/config.ts`), not
+  hardcoded — must be set explicitly per deployment (see `backend/DEPLOY.md`)
+  to the actual frontend origin(s); it does not default to allowing
+  everything.
+- **Secrets**: `backend/.env` (Neon connection strings) is gitignored and
+  was never committed — see `backend/.env.example` for the required shape
+  with placeholder values only.

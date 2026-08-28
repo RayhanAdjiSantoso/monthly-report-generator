@@ -5,7 +5,10 @@ import { clientsRouter } from './routes/clients.js';
 import { productMasterRouter } from './routes/productMaster.js';
 import { reportsRouter } from './routes/reports.js';
 
-const app = express();
+// Exported so /api/index.ts (the Vercel adapter, repo root) can import this
+// exact app instead of duplicating route setup. Everything below is
+// unchanged from the plain-Express version — nothing here is Vercel-aware.
+export const app = express();
 
 app.use(cors({ origin: config.corsOrigins }));
 app.use(express.json());
@@ -25,6 +28,14 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: message });
 });
 
-app.listen(config.port, () => {
-  console.log(`Backend listening on http://localhost:${config.port}`);
-});
+// Skipped on Vercel: the adapter imports `app` above without ever calling
+// this file directly, and Vercel's own runtime (not app.listen) is what
+// receives requests for a Function. VERCEL=1 is set automatically by
+// Vercel's build/runtime — nothing to configure. Everywhere else (local
+// `npm run dev`, the Dockerfile's `node dist/index.js`), this env var is
+// unset and the server starts exactly as before.
+if (process.env.VERCEL !== '1') {
+  app.listen(config.port, () => {
+    console.log(`Backend listening on http://localhost:${config.port}`);
+  });
+}

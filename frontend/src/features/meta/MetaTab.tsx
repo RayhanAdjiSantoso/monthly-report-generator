@@ -34,6 +34,15 @@ function formatGeneratedDate(): string {
   return new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// Day-breakdown Meta exports carry the full original row (every column) into
+// the saved report's payload, which grows much faster than the raw file
+// itself — measured at ~95KB/day combined (raw file + saved payload) for a
+// real sample. 45 days keeps a comfortable margin under hosting platforms'
+// request-size limits (e.g. Vercel Functions' 4.5MB hard cap) well before
+// the point where a save would actually fail. Purely advisory — never
+// blocks upload or Generate.
+const LONG_DAY_RANGE_WARNING_THRESHOLD = 45;
+
 interface MetaTabProps {
   isActive: boolean;
   clientId: number | null;
@@ -315,6 +324,11 @@ export function MetaTab({ isActive, clientId, onGenerated, onInvalidate }: MetaT
           <div className="empty-note" style={{ paddingTop: 0, paddingBottom: '.6rem' }}>
             File ini pakai breakdown harian — tersedia data {formatPeriodLabel(dayBounds.min, dayBounds.max)}. Rentang di bawah sudah disarankan otomatis, bebas diubah selama masih dalam data yang tersedia.
           </div>
+          {daysBetweenInclusive(dayBounds.min, dayBounds.max) > LONG_DAY_RANGE_WARNING_THRESHOLD && (
+            <InlineNotice tone="info" title="Rentang data ini cukup panjang — pastikan ini yang dimaksud">
+              File yang diupload mencakup {daysBetweenInclusive(dayBounds.min, dayBounds.max)} hari breakdown harian. Tidak masalah untuk digenerate, tapi kalau ini bukan rentang yang dimaksud, cek kembali file yang diexport dari Meta Ads Reporting.
+            </InlineNotice>
+          )}
           <div className="period-input-row">
             <div className="period-input-field">
               <label>Periode Lalu</label>

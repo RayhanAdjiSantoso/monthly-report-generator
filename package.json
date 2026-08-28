@@ -1,0 +1,7 @@
+{
+  "name": "monthly-report-generator",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Monorepo root — only exists so Vercel has something to install at the project root, and so api/index.ts (ESM, matching backend/'s own \"type\": \"module\") resolves correctly. frontend/ and backend/ each keep their own package.json/lockfile; see vercel.json for how each is actually built."
+}
