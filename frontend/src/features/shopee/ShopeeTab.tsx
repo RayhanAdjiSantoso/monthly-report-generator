@@ -29,7 +29,9 @@ import type { MetricSelection } from '../../lib/shopeeDeepDiveItemPivot';
 import type { DailyTrendMetricSelection } from '../../lib/shopeeDeepDiveInsights';
 import type { RawFileEntry, SaveReportPayload } from '../reports/types';
 import { ChannelPivotSection, DailyTrendSection, ItemPivotSection, TingkatkanDenganIklanTable, UnadvertisedVariantsTable, UncategorizedPanel } from './DeepDiveSections';
+import { FundamentalAnalysisSection, ParetoAnalysisSection, ProductRankingSection } from './AnalysisSections';
 import { buildShopeeDeepDiveReport, type ShopeeDeepDiveReport } from './shopeeDeepDiveReport';
+import { buildShopeeFunnelReport, type ShopeeFunnelReport } from './shopeeFunnelReport';
 import { buildShopeeReport, type ShopeeReport } from './shopeeReport';
 
 type AdsFileKey =
@@ -71,6 +73,8 @@ interface ProductPerformanceFileState {
   file: File;
 }
 
+type ProductPerformanceRole = 'old' | 'cur';
+
 const EMPTY_ADS_FILES: Record<AdsFileKey, AdsFileState | null> = {
   'toko-old': null,
   'toko-cur': null,
@@ -110,7 +114,11 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
 
   const [adsFiles, setAdsFiles] = useState(EMPTY_ADS_FILES);
   const [overviewFiles, setOverviewFiles] = useState(EMPTY_OVERVIEW_FILES);
-  const [productPerformanceFile, setProductPerformanceFile] = useState<ProductPerformanceFileState | null>(null);
+  // Product Performance is now a 2-slot upload (old & cur), like the other
+  // channels — Traffic/Conversion Analysis compare periods, Pareto Analysis
+  // uses only the newest. The "cur" file also still drives the older
+  // single-snapshot insights (unadvertised variants, Tingkatkan dengan Iklan).
+  const [productPerfFiles, setProductPerfFiles] = useState<Record<ProductPerformanceRole, ProductPerformanceFileState | null>>({ old: null, cur: null });
   // Optional user-uploaded category reference (nama produk -> Category/Series),
   // overlaid on top of the backend's product_master for this client.
   const [productMasterRef, setProductMasterRef] = useState<{ entries: ProductMasterEntry[]; fileName: string } | null>(null);
@@ -155,6 +163,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
 
   const [report, setReport] = useState<ShopeeReport | null>(null);
   const [deepDive, setDeepDive] = useState<ShopeeDeepDiveReport | null>(null);
+  const [funnelReport, setFunnelReport] = useState<ShopeeFunnelReport | null>(null);
   const [itemPivotTab, setItemPivotTab] = useState<'produk' | 'keyword'>('produk');
   const [generatedAt, setGeneratedAt] = useState('');
 
@@ -199,6 +208,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
       (isOld ? setPeriodOldRange : setPeriodCurRange)({ start: toISODate(period.start), end: toISODate(period.end) });
       setReport(null);
       setDeepDive(null);
+      setFunnelReport(null);
       onInvalidate();
     } catch (err) {
       setUploadError('Gagal membaca isi file: ' + (err as Error).message);
@@ -227,13 +237,14 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
       setOverviewFiles((prev) => ({ ...prev, [key]: { rows, fileName: file.name, period } }));
       setReport(null);
       setDeepDive(null);
+      setFunnelReport(null);
       onInvalidate();
     } catch (err) {
       setUploadError('Gagal membaca isi file: ' + (err as Error).message);
     }
   }
 
-  async function handleProductPerformanceFile(file: File) {
+  async function handleProductPerformanceFile(file: File, role: ProductPerformanceRole) {
     const basics = validateFileBasics(file, ['.xlsx', '.xls']);
     if (!basics.ok) {
       setUploadError(basics.message || 'File tidak valid.');
@@ -251,9 +262,10 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
       const tingkatkanSheet = wb.Sheets['Tingkatkan dengan Iklan'];
       const tingkatkanRows = tingkatkanSheet ? (XLSX.utils.sheet_to_json(tingkatkanSheet, { defval: '' }) as SheetRow[]) : [];
       setUploadError(null);
-      setProductPerformanceFile({ mainRows, tingkatkanRows, fileName: file.name, file });
+      setProductPerfFiles((prev) => ({ ...prev, [role]: { mainRows, tingkatkanRows, fileName: file.name, file } }));
       setReport(null);
       setDeepDive(null);
+      setFunnelReport(null);
       onInvalidate();
     } catch (err) {
       setUploadError('Gagal membaca isi file: ' + (err as Error).message);
@@ -281,6 +293,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
       setProductMasterRef({ entries: parsed.entries, fileName: file.name });
       setReport(null);
       setDeepDive(null);
+      setFunnelReport(null);
       onInvalidate();
     } catch (err) {
       setUploadError('Gagal membaca isi file: ' + (err as Error).message);
@@ -330,8 +343,8 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
       tokoKeywordCur: adsFiles['toko-keyword-cur']?.rows ?? [],
       liveOld: adsFiles['live-old']?.rows ?? [],
       liveCur: adsFiles['live-cur']?.rows ?? [],
-      productPerformanceRows: productPerformanceFile?.mainRows ?? null,
-      tingkatkanDenganIklanRows: productPerformanceFile?.tingkatkanRows ?? null,
+      productPerformanceRows: productPerfFiles.cur?.mainRows ?? null,
+      tingkatkanDenganIklanRows: productPerfFiles.cur?.tingkatkanRows ?? null,
       overviewOldRows: overviewFiles['overview-old']?.rows ?? null,
       overviewCurRows: overviewFiles['overview-cur']?.rows ?? null,
       productMaster: effectiveProductMaster,
@@ -341,6 +354,22 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
       keywordSelections,
       dailyTrendSelections,
     });
+    // Fundamental / Pareto / Traffic / Conversion — the 4 "manual report"
+    // sections. Iklan Produk Otomatis is folded into the produk rows first,
+    // matching how the rest of the Shopee flow (and the reference workbook's
+    // "Iklan Produk" totals) treats it.
+    const funnel = buildShopeeFunnelReport({
+      produkOld: mergeProdukOtomatis(adsFiles['produk-old']?.rows ?? [], adsFiles['produk-otomatis-old']?.rows ?? []),
+      produkCur: mergeProdukOtomatis(adsFiles['produk-cur']?.rows ?? [], adsFiles['produk-otomatis-cur']?.rows ?? []),
+      tokoOld: adsFiles['toko-old']?.rows ?? [],
+      tokoCur: adsFiles['toko-cur']?.rows ?? [],
+      liveOld: adsFiles['live-old']?.rows ?? [],
+      liveCur: adsFiles['live-cur']?.rows ?? [],
+      omzetOld: omzetOld ?? 0,
+      omzetCur: omzetCur ?? 0,
+      productPerfOld: productPerfFiles.old?.mainRows ?? null,
+      productPerfCur: productPerfFiles.cur?.mainRows ?? null,
+    });
     // Only default the open tab to the dominant channel on the very first
     // Generate — a later regenerate (metric change, uncategorized-mapping
     // save) shouldn't yank the user back to a tab they've since switched
@@ -348,6 +377,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
     if (!report) setItemPivotTab(dd.dominantChannel === 'toko' ? 'keyword' : 'produk');
     setReport(r);
     setDeepDive(dd);
+    setFunnelReport(funnel);
     setGeneratedAt(formatGeneratedDate());
     onGenerated({ period: { old: r.p1, cur: r.p2 }, kpis: r.summary.kpis, spend: r.summary.spend });
     autoSave.save(clientId, buildSavePayload(), buildSaveFiles());
@@ -375,7 +405,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
     onOmzetCurChange(null);
     setAdsFiles(EMPTY_ADS_FILES);
     setOverviewFiles(EMPTY_OVERVIEW_FILES);
-    setProductPerformanceFile(null);
+    setProductPerfFiles({ old: null, cur: null });
     setProductMasterRef(null);
     setPeriodOldDays(null);
     setPeriodCurDays(null);
@@ -383,6 +413,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
     setPeriodCurRange(EMPTY_RANGE);
     setReport(null);
     setDeepDive(null);
+    setFunnelReport(null);
     setProdukSelections(null);
     setKeywordSelections(null);
     setCustomMetrics([]);
@@ -429,7 +460,8 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
       adsFiles['toko-keyword-cur'] ? { file: adsFiles['toko-keyword-cur'].file, channel: 'toko_keyword', periodRole: 'cur' } : null,
       adsFiles['live-old'] ? { file: adsFiles['live-old'].file, channel: 'live', periodRole: 'old' } : null,
       adsFiles['live-cur'] ? { file: adsFiles['live-cur'].file, channel: 'live', periodRole: 'cur' } : null,
-      productPerformanceFile ? { file: productPerformanceFile.file, channel: 'produk_performance', periodRole: 'cur' } : null,
+      productPerfFiles.old ? { file: productPerfFiles.old.file, channel: 'produk_performance', periodRole: 'old' } : null,
+      productPerfFiles.cur ? { file: productPerfFiles.cur.file, channel: 'produk_performance', periodRole: 'cur' } : null,
     ];
     return entries.filter((f): f is RawFileEntry => f !== null);
   }
@@ -518,6 +550,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
               onOmzetOldChange(v);
               setReport(null);
               setDeepDive(null);
+              setFunnelReport(null);
               onInvalidate();
             }}
           />
@@ -528,6 +561,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
               onOmzetCurChange(v);
               setReport(null);
               setDeepDive(null);
+              setFunnelReport(null);
               onInvalidate();
             }}
           />
@@ -624,22 +658,32 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
       <div className="source-block">
         <div className="source-header">
           <div className="source-label shopee-label">Product Performance</div>
-          <span className="sec-badge">opsional — 1 file, tidak dibandingkan 2 periode</span>
+          <span className="sec-badge">opsional — untuk Pareto / Traffic / Conversion Analysis</span>
         </div>
         <div className="empty-note" style={{ padding: '0 1.4rem .6rem' }}>
-          Gunakan data dari <strong>periode ini</strong> (bulan ini), bukan periode lalu — file ini tidak dibandingkan antar periode, jadi cukup 1 snapshot terbaru.
+          Upload <strong>2 periode</strong> untuk Traffic &amp; Conversion Analysis (perbandingan antar periode). Pareto Analysis cukup pakai periode ini saja — slot periode lalu boleh dikosongkan.
         </div>
         <div className="empty-note" style={{ padding: '0 1.4rem .6rem' }}>
           Saat mengunduh file ini dari Shopee Seller Center, gunakan status <strong>"Siap Dikirim"</strong>.
         </div>
         <div className="dz-grid-4">
           <Dropzone
-            tag="Produk dengan Performa Terbaik"
+            tag="Periode Lalu"
             accept=".xlsx,.xls"
-            onFile={handleProductPerformanceFile}
-            loaded={Boolean(productPerformanceFile)}
-            fileName={productPerformanceFile?.fileName}
-            infoText={productPerformanceFile ? `${productPerformanceFile.mainRows.length} baris` : undefined}
+            onFile={(file) => handleProductPerformanceFile(file, 'old')}
+            loaded={Boolean(productPerfFiles.old)}
+            fileName={productPerfFiles.old?.fileName}
+            infoText={productPerfFiles.old ? `${productPerfFiles.old.mainRows.length} baris` : undefined}
+            className="shopee-dz"
+            icon="📦"
+          />
+          <Dropzone
+            tag="Periode Ini"
+            accept=".xlsx,.xls"
+            onFile={(file) => handleProductPerformanceFile(file, 'cur')}
+            loaded={Boolean(productPerfFiles.cur)}
+            fileName={productPerfFiles.cur?.fileName}
+            infoText={productPerfFiles.cur ? `${productPerfFiles.cur.mainRows.length} baris` : undefined}
             className="shopee-dz"
             icon="📦"
           />
@@ -688,6 +732,31 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
                       <KpiTable rows={report.productOverviewRows} p1={report.p1} p2={report.p2} />
                     </div>
                   </div>
+                )}
+
+                {funnelReport && (
+                  <>
+                    <FundamentalAnalysisSection values={funnelReport.values} tree={funnelReport.tree} liveGmv={funnelReport.liveGmv} p1={report.p1} p2={report.p2} />
+                    <ParetoAnalysisSection rows={funnelReport.pareto} hasData={funnelReport.hasProductPerfCur} periodLabel={report.p2} />
+                    <ProductRankingSection
+                      title="Traffic Analysis"
+                      badge="Product Performance · ranking traffic per produk"
+                      rankings={funnelReport.traffic}
+                      hasCur={funnelReport.hasProductPerfCur}
+                      hasOld={funnelReport.hasProductPerfOld}
+                      p1={report.p1}
+                      p2={report.p2}
+                    />
+                    <ProductRankingSection
+                      title="Conversion Analysis"
+                      badge="Product Performance · ranking konversi per produk"
+                      rankings={funnelReport.conversion}
+                      hasCur={funnelReport.hasProductPerfCur}
+                      hasOld={funnelReport.hasProductPerfOld}
+                      p1={report.p1}
+                      p2={report.p2}
+                    />
+                  </>
                 )}
 
                 <ItemPivotSection
