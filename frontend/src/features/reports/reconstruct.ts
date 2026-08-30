@@ -1,9 +1,14 @@
 import { buildMetaReport, type MetaReport } from '../meta/metaReport';
 import { buildShopeeReport, type ShopeeReport } from '../shopee/shopeeReport';
+import { buildShopeeDeepDiveReport, type ShopeeDeepDiveReport } from '../shopee/shopeeDeepDiveReport';
+import { buildShopeeFunnelReport, type ShopeeFunnelReport } from '../shopee/shopeeFunnelReport';
 import { buildTiktokReport, type TiktokReport } from '../tiktok/tiktokReport';
 import { findCol } from '../../lib/columns';
 import type { MetaIndustry } from '../../lib/meta';
 import { daysBetweenInclusive } from '../../lib/periodLabel';
+import type { ProductMasterEntry } from '../../lib/shopeeDeepDive';
+import type { DailyTrendMetricSelection } from '../../lib/shopeeDeepDiveInsights';
+import type { MetricSelection } from '../../lib/shopeeDeepDiveItemPivot';
 import type { SheetRow } from '../../lib/types';
 import type { ReportDetail } from './types';
 
@@ -15,9 +20,11 @@ import type { ReportDetail } from './types';
 // duplicated report logic and stays byte-for-byte consistent with a live
 // generate().
 //
-// Trade-off: Shopee's Product Overview table (shopee_store_overview_daily,
-// a Fase 3 table) isn't persisted in Fase 2, so a reopened Shopee report
-// never shows that section even if the original generate() had it.
+// Shopee's Product Overview IS persisted now (shopee_store_overview_daily,
+// brand-scoped daily rows) — the detail endpoint returns the rows for each
+// period's date range as detail.overviewOld/overviewCur. Product Performance
+// (no date column) still isn't, so Pareto/Traffic/Conversion stay absent on
+// a reopened report.
 
 function extraOf(row: Record<string, unknown>): SheetRow {
   return (row.extra as SheetRow | null) ?? {};
@@ -50,8 +57,65 @@ export function reconstructShopeeReport(detail: ReportDetail): ShopeeReport {
     produkCur: byChannelRole('produk', 'cur'),
     omzetOld: config.omzetOld ?? 0,
     omzetCur: config.omzetCur ?? 0,
-    overviewOldRows: null,
-    overviewCurRows: null,
+    overviewOldRows: detail.overviewOld ?? null,
+    overviewCurRows: detail.overviewCur ?? null,
+  });
+}
+
+interface ShopeeReconstructSelections {
+  produkSelections?: readonly MetricSelection[] | null;
+  keywordSelections?: readonly MetricSelection[] | null;
+  dailyTrendSelections?: readonly DailyTrendMetricSelection[] | null;
+}
+
+// The deep-dive + funnel halves of the Shopee report — same builders the
+// tab's generate() uses. Saved produk rows are already merged with Produk
+// Otomatis (rowMapping folds them in at save time), so the *Otomatis inputs
+// are empty here. Product Performance isn't persisted, so Pareto / Traffic /
+// Conversion fall back to their "no data" states.
+export function reconstructShopeeDeepDive(detail: ReportDetail, productMaster: ProductMasterEntry[], selections: ShopeeReconstructSelections = {}): ShopeeDeepDiveReport {
+  const { report, rows } = detail;
+  const byChannelRole = (channel: string, role: string) => rows.filter((r) => r.channel === channel && r.period_role === role).map((r) => extraOf(r));
+  const config = (report.reportConfig ?? {}) as { omzetOld?: number; omzetCur?: number };
+  return buildShopeeDeepDiveReport({
+    produkOld: byChannelRole('produk', 'old'),
+    produkCur: byChannelRole('produk', 'cur'),
+    produkOtomatisOld: [],
+    produkOtomatisCur: [],
+    tokoOld: byChannelRole('toko', 'old'),
+    tokoCur: byChannelRole('toko', 'cur'),
+    tokoKeywordOld: byChannelRole('toko_keyword', 'old'),
+    tokoKeywordCur: byChannelRole('toko_keyword', 'cur'),
+    liveOld: byChannelRole('live', 'old'),
+    liveCur: byChannelRole('live', 'cur'),
+    productPerformanceRows: null,
+    tingkatkanDenganIklanRows: null,
+    overviewOldRows: detail.overviewOld ?? null,
+    overviewCurRows: detail.overviewCur ?? null,
+    productMaster,
+    omzetOld: config.omzetOld ?? 0,
+    omzetCur: config.omzetCur ?? 0,
+    produkSelections: selections.produkSelections ?? null,
+    keywordSelections: selections.keywordSelections ?? null,
+    dailyTrendSelections: selections.dailyTrendSelections ?? null,
+  });
+}
+
+export function reconstructShopeeFunnel(detail: ReportDetail): ShopeeFunnelReport {
+  const { report, rows } = detail;
+  const byChannelRole = (channel: string, role: string) => rows.filter((r) => r.channel === channel && r.period_role === role).map((r) => extraOf(r));
+  const config = (report.reportConfig ?? {}) as { omzetOld?: number; omzetCur?: number };
+  return buildShopeeFunnelReport({
+    produkOld: byChannelRole('produk', 'old'),
+    produkCur: byChannelRole('produk', 'cur'),
+    tokoOld: byChannelRole('toko', 'old'),
+    tokoCur: byChannelRole('toko', 'cur'),
+    liveOld: byChannelRole('live', 'old'),
+    liveCur: byChannelRole('live', 'cur'),
+    omzetOld: config.omzetOld ?? 0,
+    omzetCur: config.omzetCur ?? 0,
+    productPerfOld: null,
+    productPerfCur: null,
   });
 }
 

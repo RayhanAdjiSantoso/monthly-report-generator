@@ -65,6 +65,16 @@ function toJsonb(v: Record<string, unknown> | null): string | null {
   return v ? JSON.stringify(v) : null;
 }
 
+// Shopee's Product Overview export writes its date column as "DD-MM-YYYY"
+// text (same format lib/shopeeDeepDiveInsights.ts's tanggalDay() reads).
+// Rows without a parseable date (e.g. a trailing total row) return null and
+// are skipped.
+function overviewDateToIso(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const m = v.trim().match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+}
+
 function shopeeRowValues(runId: number, r: ShopeeAdRowInput): unknown[] {
   return [
     runId,
@@ -164,7 +174,8 @@ reportsRouter.post('/', upload.array('files'), async (req, res) => {
        DO UPDATE SET
          period_old_label = EXCLUDED.period_old_label,
          period_cur_label = EXCLUDED.period_cur_label,
-         report_config = EXCLUDED.report_config
+         report_config = EXCLUDED.report_config,
+         updated_at = now()
        RETURNING id`,
       [
         payload.brandId,
@@ -184,6 +195,21 @@ reportsRouter.post('/', upload.array('files'), async (req, res) => {
       await client.query('DELETE FROM ads_reports.shopee_ad_rows WHERE report_run_id = $1', [runId]);
       const insert = buildBulkInsert('ads_reports.shopee_ad_rows', SHOPEE_COLUMNS, (payload.rows.shopee ?? []).map((r) => shopeeRowValues(runId, r)));
       if (insert) await client.query(insert.text, insert.values);
+
+      // Product Overview daily rows — brand-scoped, upserted by date (not
+      // deleted-then-reinserted like the run-scoped tables above), so the
+      // client's overview history accumulates across every report.
+      for (const row of payload.rows.shopeeOverview ?? []) {
+        const iso = overviewDateToIso((row as Record<string, unknown>).Tanggal);
+        if (!iso) continue;
+        await client.query(
+          `INSERT INTO ads_reports.shopee_store_overview_daily (brand_id, tanggal, extra)
+           VALUES ($1, $2, $3)
+           ON CONFLICT ON CONSTRAINT ux_shopee_store_overview_daily
+           DO UPDATE SET extra = EXCLUDED.extra`,
+          [payload.brandId, iso, toJsonb(row as Record<string, unknown>)],
+        );
+      }
     } else if (payload.platform === 'meta') {
       await client.query('DELETE FROM ads_reports.meta_ad_rows WHERE report_run_id = $1', [runId]);
       const insert = buildBulkInsert('ads_reports.meta_ad_rows', META_COLUMNS, (payload.rows.meta ?? []).map((r) => metaRowValues(runId, r)));
@@ -249,6 +275,71 @@ reportsRouter.get('/', async (req, res) => {
   );
 });
 
+// One saved period on its own, independent of whichever comparison it was
+// first saved in — powers the "Pilih dari data tersimpan" picker. Returns
+// the same `extra` blobs (the verbatim original parsed rows) that
+// reconstruct.ts feeds back through buildXReport(), grouped by channel, so
+// the caller can drop them straight into a tab's per-slot state. Registered
+// before '/:id' — the paths don't collide (three segments vs one), this is
+// just where it reads best.
+reportsRouter.get('/:id/period/:role', async (req, res) => {
+  const id = Number(req.params.id);
+  const role = req.params.role;
+  if (!Number.isFinite(id)) {
+    res.status(400).json({ error: 'Invalid id' });
+    return;
+  }
+  if (role !== 'old' && role !== 'cur') {
+    res.status(400).json({ error: 'role must be "old" or "cur"' });
+    return;
+  }
+  const runResult = await pool.query('SELECT * FROM ads_reports.report_runs WHERE id = $1', [id]);
+  const run = runResult.rows[0];
+  if (!run) {
+    res.status(404).json({ error: 'Report not found' });
+    return;
+  }
+  let table: string | null = null;
+  if (run.platform === 'shopee') table = 'ads_reports.shopee_ad_rows';
+  else if (run.platform === 'meta') table = 'ads_reports.meta_ad_rows';
+  else if (run.platform === 'tiktok') table = 'ads_reports.tiktok_ad_rows';
+  const rowsResult = table
+    ? await pool.query(`SELECT * FROM ${table} WHERE report_run_id = $1 AND period_role = $2 ORDER BY id`, [id, role])
+    : { rows: [] as Record<string, unknown>[] };
+
+  // TikTok's fact table has no `channel` column (campaign-level only) — bucket
+  // it under a single synthetic key so the response shape stays uniform.
+  const channels: Record<string, unknown[]> = {};
+  for (const row of rowsResult.rows) {
+    const ch = run.platform === 'tiktok' ? 'tiktok' : (row.channel as string | null) ?? 'unknown';
+    (channels[ch] ??= []).push((row.extra as unknown) ?? {});
+  }
+
+  const pStart = role === 'old' ? run.period_old_start : run.period_cur_start;
+  const pEnd = role === 'old' ? run.period_old_end : run.period_cur_end;
+
+  // Shopee Product Overview for this period's date range — brand-scoped
+  // daily data, so it comes back even if the file was uploaded under a
+  // different comparison. (Product Performance has no date column and is
+  // not persisted — the tab still asks for it manually.)
+  const overview =
+    run.platform === 'shopee' && pStart && pEnd
+      ? (await pool.query('SELECT extra FROM ads_reports.shopee_store_overview_daily WHERE brand_id = $1 AND tanggal BETWEEN $2 AND $3 ORDER BY tanggal', [run.brand_id, pStart, pEnd])).rows.map((x) => x.extra)
+      : [];
+
+  res.json({
+    platform: run.platform,
+    reportConfig: run.report_config,
+    period: {
+      label: role === 'old' ? run.period_old_label : run.period_cur_label,
+      start: pStart,
+      end: pEnd,
+    },
+    channels,
+    overview,
+  });
+});
+
 reportsRouter.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) {
@@ -269,6 +360,19 @@ reportsRouter.get('/:id', async (req, res) => {
 
   const rowsResult = table ? await pool.query(`SELECT * FROM ${table} WHERE report_run_id = $1 ORDER BY id`, [id]) : { rows: [] };
 
+  // Shopee Product Overview is brand-scoped daily data — pull the rows
+  // falling inside each of this run's two periods so reconstruct.ts can
+  // rebuild the Product Overview + Tren Harian sections without the file.
+  const overviewInRange = async (start: string | null, end: string | null): Promise<unknown[]> => {
+    if (run.platform !== 'shopee' || !start || !end) return [];
+    const r = await pool.query('SELECT extra FROM ads_reports.shopee_store_overview_daily WHERE brand_id = $1 AND tanggal BETWEEN $2 AND $3 ORDER BY tanggal', [run.brand_id, start, end]);
+    return r.rows.map((x) => x.extra);
+  };
+  const [overviewOld, overviewCur] = await Promise.all([
+    overviewInRange(run.period_old_start, run.period_old_end),
+    overviewInRange(run.period_cur_start, run.period_cur_end),
+  ]);
+
   res.json({
     report: {
       id: run.id,
@@ -284,6 +388,8 @@ reportsRouter.get('/:id', async (req, res) => {
       createdAt: run.created_at,
     },
     rows: rowsResult.rows,
+    overviewOld,
+    overviewCur,
   });
 });
 

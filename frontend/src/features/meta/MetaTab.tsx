@@ -15,11 +15,15 @@ import { DownloadPdfButton } from '../../components/DownloadPdfButton';
 import { PeriodCompareChip } from '../../components/PeriodCompareChip';
 import { PeriodWarningBanner } from '../../components/PeriodWarningBanner';
 import { StepIndicator, type Step } from '../../components/StepIndicator';
+import { SlotSourceTabs, SavedSlotCard, type SlotSource } from '../../components/SlotSourceTabs';
 import type { PlatformResultData } from '../../lib/summary';
 import { SaveStatus } from '../reports/SaveStatus';
 import { useAutoSave } from '../reports/useAutoSave';
+import { getReportDetail } from '../reports/api';
+import { SavedPeriodPicker } from '../reports/SavedPeriodPicker';
+import { formatSavedAt } from '../reports/savedPeriodLabels';
 import { mapMetaCpasRows, mapMetaMainRows } from '../reports/rowMapping';
-import type { RawFileEntry, SaveReportPayload } from '../reports/types';
+import type { RawFileEntry, SaveReportPayload, SavedPeriod } from '../reports/types';
 import { buildMetaReport, type MetaReport } from './metaReport';
 
 // Meta's export uses either a "Month" breakdown or a "Day" breakdown column
@@ -77,6 +81,13 @@ export function MetaTab({ isActive, clientId, onGenerated, onInvalidate }: MetaT
   const [generatedAt, setGeneratedAt] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // "Pilih dari data tersimpan" — Meta uploads one file spanning both
+  // periods, so the picker reuses a whole previously-saved comparison
+  // (both periods + industry/header config), not an independent period.
+  const [srcMode, setSrcMode] = useState<SlotSource>('upload');
+  const [savedPick, setSavedPick] = useState<SavedPeriod | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   async function handleUpload(file: File, target: 'meta' | 'cpas') {
     const basics = validateFileBasics(file, ['.csv', '.xlsx', '.xls']);
     if (!basics.ok) {
@@ -133,6 +144,89 @@ export function MetaTab({ isActive, clientId, onGenerated, onInvalidate }: MetaT
     onInvalidate();
   }
 
+  function switchMode(mode: SlotSource) {
+    setSrcMode(mode);
+    setSavedPick(null);
+    setMetaRows(null);
+    setMetaHeaders([]);
+    setMetaFileName('');
+    setMetaFile(null);
+    setCpasRows(null);
+    setCpasHeaders([]);
+    setCpasFileName('');
+    setCpasFile(null);
+    setIndustry(null);
+    setCustomResultsCol(null);
+    setDayCol(null);
+    setDayBounds(null);
+    setOldRange(null);
+    setCurRange(null);
+    setReport(null);
+    setUploadError(null);
+    onInvalidate();
+  }
+
+  // Rehydrate a whole saved comparison into tab state — same shape
+  // reconstructMetaReport() derives, but left editable so Generate + autosave
+  // run normally (the autosave upserts back onto the same period pair).
+  async function applySavedComparison(p: SavedPeriod) {
+    try {
+      const detail = await getReportDetail(p.runId);
+      const cfg = (detail.report.reportConfig ?? {}) as {
+        industry?: MetaIndustry;
+        customResultsCol?: string | null;
+        metaHeaders?: string[];
+        cpasHeaders?: string[];
+      };
+      const extraOf = (r: Record<string, unknown>): SheetRow => (r.extra as SheetRow | null) ?? {};
+      const mainRows = detail.rows.filter((r) => r.channel === 'boost' || r.channel === 'nonboost').map(extraOf);
+      const cpasRowsAll = detail.rows.filter((r) => r.channel === 'cpas_overall').map(extraOf);
+      if (!mainRows.length) {
+        setUploadError('Data Meta tersimpan tidak memuat baris Boost / Non-Boost.');
+        return;
+      }
+      setUploadError(null);
+      setMetaRows(mainRows);
+      setMetaHeaders(cfg.metaHeaders ?? Object.keys(mainRows[0] ?? {}));
+      setMetaFileName(`Data tersimpan · ${detail.report.periodCurLabel ?? '?'} vs ${detail.report.periodOldLabel ?? '?'}`);
+      setMetaFile(null);
+      if (cpasRowsAll.length) {
+        setCpasRows(cpasRowsAll);
+        setCpasHeaders(cfg.cpasHeaders ?? Object.keys(cpasRowsAll[0] ?? {}));
+        setCpasFileName('Data tersimpan');
+        setCpasFile(null);
+      } else {
+        setCpasRows(null);
+        setCpasHeaders([]);
+        setCpasFileName('');
+        setCpasFile(null);
+      }
+      setIndustry(cfg.industry ?? null);
+      setCustomResultsCol(cfg.customResultsCol ?? null);
+      setSavedPick(p);
+
+      const dCol = findCol(mainRows, ['day']);
+      setDayCol(dCol);
+      const oS = detail.report.periodOldStart ? fromISODate(detail.report.periodOldStart) : null;
+      const oE = detail.report.periodOldEnd ? fromISODate(detail.report.periodOldEnd) : null;
+      const cS = detail.report.periodCurStart ? fromISODate(detail.report.periodCurStart) : null;
+      const cE = detail.report.periodCurEnd ? fromISODate(detail.report.periodCurEnd) : null;
+      if (dCol && oS && oE && cS && cE) {
+        setDayBounds({ min: oS, max: cE });
+        setOldRange({ start: oS, end: oE });
+        setCurRange({ start: cS, end: cE });
+      } else {
+        setDayBounds(null);
+        setOldRange(null);
+        setCurRange(null);
+      }
+      setReport(null);
+      onInvalidate();
+    } catch (err) {
+      setUploadError('Gagal memuat data tersimpan: ' + (err as Error).message);
+    }
+  }
+
   const customNumCols = metaRows ? metaHeaders.filter((h) => isNumericCol(h, metaRows) && !isSkip(h)) : [];
   const industryOk = Boolean(industry && (industry !== 'custom' || customResultsCol));
   const dayRangesOk = !dayCol || Boolean(oldRange && curRange && oldRange.start <= oldRange.end && curRange.start <= curRange.end);
@@ -167,6 +261,9 @@ export function MetaTab({ isActive, clientId, onGenerated, onInvalidate }: MetaT
     setCurRange(null);
     setReport(null);
     setUploadError(null);
+    setSrcMode('upload');
+    setSavedPick(null);
+    setPickerOpen(false);
     onInvalidate();
   }
 
@@ -262,16 +359,50 @@ export function MetaTab({ isActive, clientId, onGenerated, onInvalidate }: MetaT
         <div className="source-header">
           <div className="source-label">Meta Ads</div>
         </div>
-        <Dropzone
-          tag="1 file · berisi 2 periode · Boost + Non-boost"
-          accept=".csv,.xlsx,.xls"
-          onFile={(f) => handleUpload(f, 'meta')}
-          loaded={Boolean(metaRows)}
-          fileName={metaFileName}
-          infoText={metaRows ? `${metaRows.length} baris` : undefined}
+        <SlotSourceTabs
+          value={srcMode}
+          onChange={switchMode}
+          disabledSavedReason={clientId ? null : 'Pilih klien dulu di bagian atas halaman'}
         />
+        {srcMode === 'upload' ? (
+          <Dropzone
+            tag="1 file · berisi 2 periode · Boost + Non-boost"
+            accept=".csv,.xlsx,.xls"
+            onFile={(f) => handleUpload(f, 'meta')}
+            loaded={Boolean(metaRows)}
+            fileName={metaFileName}
+            infoText={metaRows ? `${metaRows.length} baris` : undefined}
+          />
+        ) : (
+          <SavedSlotCard
+            picked={
+              savedPick
+                ? {
+                    title: savedPick.sourceComparison,
+                    sourceComparison: savedPick.sourceComparison,
+                    savedAt: formatSavedAt(savedPick.savedAt),
+                    summary: metaRows ? `${metaRows.length} baris${cpasRows ? ` · CPAS ${cpasRows.length}` : ''}` : '',
+                    metaLine: `disimpan ${formatSavedAt(savedPick.savedAt)} · industri & kolom Results ikut dimuat`,
+                  }
+                : null
+            }
+            onOpen={() => setPickerOpen(true)}
+            onClear={() => switchMode('saved')}
+            hint="Memuat 1 perbandingan Meta yang pernah disimpan (kedua periode sekaligus)"
+          />
+        )}
         {uploadError && <InlineNotice title="File ini belum kebaca">{uploadError}</InlineNotice>}
       </div>
+
+      {pickerOpen && clientId && (
+        <SavedPeriodPicker
+          clientId={clientId}
+          platform="meta"
+          variant="comparison"
+          onClose={() => setPickerOpen(false)}
+          onPick={applySavedComparison}
+        />
+      )}
 
       {metaRows && (
         <div className="industry-selector visible">

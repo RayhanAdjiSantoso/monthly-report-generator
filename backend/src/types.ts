@@ -77,5 +77,10 @@ export interface SaveReportPayload {
     shopee?: ShopeeAdRowInput[];
     meta?: MetaAdRowInput[];
     tiktok?: TiktokAdRowInput[];
+    // Shopee Product Overview daily rows (verbatim parsed rows). Persisted
+    // into ads_reports.shopee_store_overview_daily keyed by (brand_id,
+    // tanggal) — a brand-scoped daily store, not tied to this report_run, so
+    // any later comparison touching those dates reuses it without re-upload.
+    shopeeOverview?: Record<string, unknown>[];
   };
 }

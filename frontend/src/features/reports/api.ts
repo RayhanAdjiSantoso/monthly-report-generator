@@ -1,5 +1,5 @@
 import type { ProductMasterEntry } from '../../lib/shopeeDeepDive';
-import type { Client, Platform, RawFileEntry, ReportDetail, ReportListItem, SaveReportPayload } from './types';
+import type { Client, Platform, PeriodRole, RawFileEntry, ReportDetail, ReportListItem, SaveReportPayload, SavedPeriod, SavedPeriodDetail } from './types';
 
 // Defaults to '' (same-origin relative /api/... requests) — correct for the
 // Vercel deployment, where vercel.json rewrites /api/* to the backend
@@ -50,6 +50,19 @@ export async function getReportDetail(id: number): Promise<ReportDetail> {
   return asJson<ReportDetail>(res);
 }
 
+// "Pilih dari data tersimpan" — periods this client has previously uploaded
+// for a platform, and the stored rows for one of them.
+export async function getSavedPeriods(clientId: number, platform: Platform): Promise<SavedPeriod[]> {
+  const params = new URLSearchParams({ client_id: String(clientId), platform });
+  const res = await fetch(`${API_BASE}/api/saved-periods?${params.toString()}`);
+  return asJson<SavedPeriod[]>(res);
+}
+
+export async function getSavedPeriod(runId: number, role: PeriodRole): Promise<SavedPeriodDetail> {
+  const res = await fetch(`${API_BASE}/api/reports/${runId}/period/${role}`);
+  return asJson<SavedPeriodDetail>(res);
+}
+
 export async function deleteReport(id: number): Promise<void> {
   const res = await fetch(`${API_BASE}/api/reports/${id}`, { method: 'DELETE' });
   if (!res.ok) {
@@ -71,4 +84,16 @@ export async function saveProductMasterEntry(brandId: number, entry: ProductMast
     body: JSON.stringify({ brandId, namaProdukClean: entry.namaProdukClean, category: entry.category, series: entry.series }),
   });
   return asJson<ProductMasterEntry>(res);
+}
+
+// Full replace of a client's category mapping — the "Referensi Kategori
+// Produk" upload. Returns the entries actually stored (deduped/validated
+// server-side).
+export async function replaceProductMaster(brandId: number, entries: ProductMasterEntry[]): Promise<ProductMasterEntry[]> {
+  const res = await fetch(`${API_BASE}/api/product-master`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ brandId, entries }),
+  });
+  return asJson<ProductMasterEntry[]>(res);
 }
