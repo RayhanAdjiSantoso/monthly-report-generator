@@ -9,8 +9,10 @@ import { PeriodInputRow } from '../../components/PeriodInputRow';
 import { PeriodWarningBanner } from '../../components/PeriodWarningBanner';
 import { SectionDownloadButton } from '../../components/SectionDownloadButton';
 import { StepIndicator, type Step } from '../../components/StepIndicator';
+import { SlotSourceTabs, SavedSlotCard, type SlotSource } from '../../components/SlotSourceTabs';
 import { usePeriodLabel } from '../../hooks/usePeriodLabel';
-import { toISODate } from '../../lib/dateFmt';
+import { fromISODate, toISODate } from '../../lib/dateFmt';
+import { daysBetweenInclusive } from '../../lib/periodLabel';
 import { parseTiktokXLSX, periodFromTiktokFilename } from '../../lib/tiktok';
 import type { SheetRow } from '../../lib/types';
 import { requireColumns, validateFileBasics } from '../../lib/validation';
@@ -18,7 +20,10 @@ import type { PlatformResultData } from '../../lib/summary';
 import { SaveStatus } from '../reports/SaveStatus';
 import { useAutoSave } from '../reports/useAutoSave';
 import { mapTiktokRows } from '../reports/rowMapping';
-import type { SaveReportPayload } from '../reports/types';
+import { getSavedPeriod } from '../reports/api';
+import { SavedPeriodPicker } from '../reports/SavedPeriodPicker';
+import { formatChannelCoverage, formatSavedAt } from '../reports/savedPeriodLabels';
+import type { SaveReportPayload, SavedPeriod } from '../reports/types';
 import { buildTiktokReport, type TiktokReport } from './tiktokReport';
 
 type FileKey = 'tiktok-old' | 'tiktok-cur';
@@ -26,7 +31,10 @@ type FileKey = 'tiktok-old' | 'tiktok-cur';
 interface FileState {
   rows: SheetRow[];
   fileName: string;
-  file: File;
+  // Absent when the slot's rows came from stored data (SavedPeriodPicker)
+  // rather than a fresh upload — there's no File to re-archive then, and
+  // raw_uploads isn't used for reconstruction anyway.
+  file?: File;
 }
 
 interface DateRange {
@@ -53,6 +61,9 @@ export function TiktokTab({ isActive, clientId, onGenerated, onInvalidate }: Tik
 
   const [files, setFiles] = useState<Record<FileKey, FileState | null>>({ 'tiktok-old': null, 'tiktok-cur': null });
   const [fileErrors, setFileErrors] = useState<Record<FileKey, string | null>>({ 'tiktok-old': null, 'tiktok-cur': null });
+  const [srcMode, setSrcMode] = useState<Record<FileKey, SlotSource>>({ 'tiktok-old': 'upload', 'tiktok-cur': 'upload' });
+  const [savedPick, setSavedPick] = useState<Record<FileKey, SavedPeriod | null>>({ 'tiktok-old': null, 'tiktok-cur': null });
+  const [pickerOpen, setPickerOpen] = useState<FileKey | null>(null);
   const [periodOldDays, setPeriodOldDays] = useState<number | null>(null);
   const [periodCurDays, setPeriodCurDays] = useState<number | null>(null);
   const [periodOldRange, setPeriodOldRange] = useState<DateRange>(EMPTY_RANGE);
@@ -92,6 +103,37 @@ export function TiktokTab({ isActive, clientId, onGenerated, onInvalidate }: Tik
     }
   }
 
+  function switchMode(key: FileKey, mode: SlotSource) {
+    setSrcMode((prev) => ({ ...prev, [key]: mode }));
+    setFiles((prev) => ({ ...prev, [key]: null }));
+    setSavedPick((prev) => ({ ...prev, [key]: null }));
+    setFileErrors((prev) => ({ ...prev, [key]: null }));
+    setReport(null);
+    onInvalidate();
+  }
+
+  async function applySavedPeriod(key: FileKey, p: SavedPeriod) {
+    const isOld = key === 'tiktok-old';
+    try {
+      const detail = await getSavedPeriod(p.runId, p.role);
+      const rows = detail.channels.tiktok ?? [];
+      setFiles((prev) => ({ ...prev, [key]: { rows, fileName: `Data tersimpan · ${p.label ?? detail.period.label ?? ''}`.trim() } }));
+      setSavedPick((prev) => ({ ...prev, [key]: p }));
+      setFileErrors((prev) => ({ ...prev, [key]: null }));
+      (isOld ? periodOld : periodCur).autoFill(p.label ?? detail.period.label ?? '');
+      const start = detail.period.start ?? p.start;
+      const end = detail.period.end ?? p.end;
+      (isOld ? setPeriodOldRange : setPeriodCurRange)({ start, end });
+      const sd = start ? fromISODate(start) : null;
+      const ed = end ? fromISODate(end) : null;
+      (isOld ? setPeriodOldDays : setPeriodCurDays)(sd && ed ? daysBetweenInclusive(sd, ed) : null);
+      setReport(null);
+      onInvalidate();
+    } catch (err) {
+      setFileErrors((prev) => ({ ...prev, [key]: 'Gagal memuat data tersimpan: ' + (err as Error).message }));
+    }
+  }
+
   const ready = Boolean(files['tiktok-old'] && files['tiktok-cur'] && clientId);
 
   const autoSave = useAutoSave('tiktok');
@@ -109,6 +151,9 @@ export function TiktokTab({ isActive, clientId, onGenerated, onInvalidate }: Tik
     periodCur.reset();
     setFiles({ 'tiktok-old': null, 'tiktok-cur': null });
     setFileErrors({ 'tiktok-old': null, 'tiktok-cur': null });
+    setSrcMode({ 'tiktok-old': 'upload', 'tiktok-cur': 'upload' });
+    setSavedPick({ 'tiktok-old': null, 'tiktok-cur': null });
+    setPickerOpen(null);
     setPeriodOldDays(null);
     setPeriodCurDays(null);
     setPeriodOldRange(EMPTY_RANGE);
@@ -129,26 +174,47 @@ export function TiktokTab({ isActive, clientId, onGenerated, onInvalidate }: Tik
 
   function buildSaveFiles() {
     return [
-      files['tiktok-old'] ? { file: files['tiktok-old'].file, channel: 'tiktok', periodRole: 'old' as const } : null,
-      files['tiktok-cur'] ? { file: files['tiktok-cur'].file, channel: 'tiktok', periodRole: 'cur' as const } : null,
+      files['tiktok-old']?.file ? { file: files['tiktok-old']!.file!, channel: 'tiktok', periodRole: 'old' as const } : null,
+      files['tiktok-cur']?.file ? { file: files['tiktok-cur']!.file!, channel: 'tiktok', periodRole: 'cur' as const } : null,
     ].filter((f): f is { file: File; channel: string; periodRole: 'old' | 'cur' } => f !== null);
   }
 
   function dropzone(key: FileKey) {
     const f = files[key];
+    const pick = savedPick[key];
     return (
       <div>
-        <Dropzone
-          tag={key === 'tiktok-old' ? 'Periode Lalu' : 'Periode Ini'}
-          accept=".xlsx,.xls,.csv"
-          onFile={(file) => handleFile(file, key)}
-          loaded={Boolean(f)}
-          fileName={f?.fileName}
-          infoText={f ? `${f.rows.length} campaigns` : undefined}
+        <SlotSourceTabs
+          value={srcMode[key]}
+          onChange={(m) => switchMode(key, m)}
+          disabledSavedReason={clientId ? null : 'Pilih klien dulu di bagian atas halaman'}
         />
-        {fileErrors[key] && (
-          <InlineNotice title="File ini belum kebaca">{fileErrors[key]}</InlineNotice>
+        {srcMode[key] === 'upload' ? (
+          <Dropzone
+            tag={key === 'tiktok-old' ? 'Periode Lalu' : 'Periode Ini'}
+            accept=".xlsx,.xls,.csv"
+            onFile={(file) => handleFile(file, key)}
+            loaded={Boolean(f)}
+            fileName={f?.fileName}
+            infoText={f ? `${f.rows.length} campaigns` : undefined}
+          />
+        ) : (
+          <SavedSlotCard
+            picked={
+              pick
+                ? {
+                    title: pick.label || 'Tanpa label',
+                    sourceComparison: pick.sourceComparison,
+                    savedAt: formatSavedAt(pick.savedAt),
+                    summary: f ? `${f.rows.length} campaigns · ${formatChannelCoverage(pick.channels)}` : '',
+                  }
+                : null
+            }
+            onOpen={() => setPickerOpen(key)}
+            onClear={() => switchMode(key, 'saved')}
+          />
         )}
+        {fileErrors[key] && <InlineNotice title="File ini belum kebaca">{fileErrors[key]}</InlineNotice>}
       </div>
     );
   }
@@ -201,6 +267,16 @@ export function TiktokTab({ isActive, clientId, onGenerated, onInvalidate }: Tik
           {dropzone('tiktok-cur')}
         </div>
       </div>
+
+      {pickerOpen && clientId && (
+        <SavedPeriodPicker
+          clientId={clientId}
+          platform="tiktok"
+          variant="period"
+          onClose={() => setPickerOpen(null)}
+          onPick={((key) => (p: SavedPeriod) => applySavedPeriod(key, p))(pickerOpen)}
+        />
+      )}
 
       {ready && (
         <div id="cta" style={{ marginTop: '1rem' }}>

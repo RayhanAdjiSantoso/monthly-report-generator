@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DemoBreakdownCard } from '../../components/DemoBreakdownCard';
 import { InlineNotice } from '../../components/InlineNotice';
 import { KpiTable } from '../../components/KpiTable';
@@ -6,8 +6,12 @@ import { OverviewDetailedCard } from '../../components/OverviewDetailedCard';
 import { PeriodCompareChip } from '../../components/PeriodCompareChip';
 import { PeriodWarningBanner } from '../../components/PeriodWarningBanner';
 import { SectionDownloadButton } from '../../components/SectionDownloadButton';
-import { deleteReport, getReportDetail, getReports } from './api';
-import { reconstructMetaReport, reconstructShopeeReport, reconstructTiktokReport } from './reconstruct';
+import { ShopeeReportSections } from '../shopee/ShopeeReportSections';
+import type { ProductMasterEntry } from '../../lib/shopeeDeepDive';
+import type { DailyTrendMetricSelection } from '../../lib/shopeeDeepDiveInsights';
+import type { MetricSelection } from '../../lib/shopeeDeepDiveItemPivot';
+import { deleteReport, getProductMaster, getReportDetail, getReports, saveProductMasterEntry } from './api';
+import { reconstructMetaReport, reconstructShopeeDeepDive, reconstructShopeeFunnel, reconstructShopeeReport, reconstructTiktokReport } from './reconstruct';
 import type { Platform, ReportDetail, ReportListItem } from './types';
 
 interface ReportsTabProps {
@@ -30,17 +34,27 @@ export function ReportsTab({ isActive, clientId }: ReportsTabProps) {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (!isActive || !clientId) return;
     setLoading(true);
     setListError(null);
     setSelected(null);
+    setQuery('');
     getReports(clientId)
       .then(setReports)
       .catch((err) => setListError((err as Error).message))
       .finally(() => setLoading(false));
   }, [isActive, clientId]);
+
+  const visibleReports = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return reports;
+    return reports.filter((r) =>
+      `${r.periodCurLabel ?? ''} ${r.periodOldLabel ?? ''} ${PLATFORM_LABELS[r.platform]} ${new Date(r.createdAt).toLocaleString('id-ID')}`.toLowerCase().includes(q),
+    );
+  }, [reports, query]);
 
   function open(id: number) {
     setDetailError(null);
@@ -74,8 +88,20 @@ export function ReportsTab({ isActive, clientId }: ReportsTabProps) {
         {clientId && listError && <InlineNotice title="Riwayat tidak bisa dimuat">{listError}</InlineNotice>}
         {clientId && !loading && !listError && reports.length === 0 && <div className="empty-note">Belum ada laporan tersimpan untuk klien ini.</div>}
         {deleteError && <InlineNotice title="Laporan gagal dihapus">{deleteError}</InlineNotice>}
+        {clientId && !loading && !listError && reports.length > 0 && (
+          <input
+            className="saved-modal-search"
+            style={{ margin: '.8rem 0 0', width: '100%' }}
+            placeholder="Cari laporan — label periode / platform…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        )}
+        {clientId && !loading && !listError && reports.length > 0 && visibleReports.length === 0 && (
+          <div className="empty-note">Tidak ada laporan yang cocok dengan “{query}”.</div>
+        )}
         <div className="reports-list">
-          {reports.map((r) => (
+          {visibleReports.map((r) => (
             <div key={r.id} className="report-list-item" onClick={() => open(r.id)}>
               <div className="report-list-main">
                 <div className="report-list-title">
@@ -112,7 +138,44 @@ function ReportDetailView({ detail }: { detail: ReportDetail }) {
 }
 
 function ShopeeDetailView({ detail }: { detail: ReportDetail }) {
-  const report = reconstructShopeeReport(detail);
+  const report = useMemo(() => reconstructShopeeReport(detail), [detail]);
+  const funnelReport = useMemo(() => reconstructShopeeFunnel(detail), [detail]);
+
+  // Category mapping for this client — same source the live tab uses, so an
+  // "Uncategorized" fix here persists and re-categorizes the view.
+  const [productMaster, setProductMaster] = useState<ProductMasterEntry[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    getProductMaster(detail.report.brandId)
+      .then((rows) => {
+        if (!cancelled) setProductMaster(rows);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [detail.report.brandId]);
+
+  const [produkSelections, setProdukSelections] = useState<MetricSelection[] | null>(null);
+  const [keywordSelections, setKeywordSelections] = useState<MetricSelection[] | null>(null);
+  const [dailyTrendSelections, setDailyTrendSelections] = useState<DailyTrendMetricSelection[] | null>(null);
+  const [customMetrics, setCustomMetrics] = useState<MetricSelection[]>([]);
+  const [itemPivotTab, setItemPivotTab] = useState<'produk' | 'keyword'>('produk');
+
+  const deepDive = useMemo(
+    () => reconstructShopeeDeepDive(detail, productMaster, { produkSelections, keywordSelections, dailyTrendSelections }),
+    [detail, productMaster, produkSelections, keywordSelections, dailyTrendSelections],
+  );
+
+  const hasTokoData = detail.rows.some((r) => r.channel === 'toko');
+  const hasLiveData = detail.rows.some((r) => r.channel === 'live');
+  const hasTokoKeywordData = detail.rows.some((r) => r.channel === 'toko_keyword');
+
+  async function handleSaveCategory(name: string, category: string, series: string) {
+    await saveProductMasterEntry(detail.report.brandId, { namaProdukClean: name, category, series });
+    setProductMaster((prev) => [...prev.filter((p) => p.namaProdukClean !== name), { namaProdukClean: name, category, series }]);
+  }
+
   return (
     <div id="report-shopee-history">
       <div className="report-top">
@@ -122,18 +185,25 @@ function ShopeeDetailView({ detail }: { detail: ReportDetail }) {
         </div>
       </div>
       <div data-role="r-body">
-        <PeriodWarningBanner message={report.periodWarning} />
-        <OverviewDetailedCard
-          heading="Shopee Ads"
-          badge="Iklan Toko + Iklan Produk"
-          overviewRows={report.overviewRows}
-          detailedRows={report.detailedRows}
-          allCols={report.allCols}
-          p1={report.p1}
-          p2={report.p2}
-          headingClassName="shopee-heading"
+        <ShopeeReportSections
+          report={report}
+          deepDive={deepDive}
+          funnelReport={funnelReport}
+          hasTokoData={hasTokoData}
+          hasLiveData={hasLiveData}
+          hasTokoKeywordData={hasTokoKeywordData}
+          customMetrics={customMetrics}
+          onAddCustomMetric={(sel) => setCustomMetrics((prev) => [...prev, sel])}
+          onProdukSelectionsChange={setProdukSelections}
+          onKeywordSelectionsChange={setKeywordSelections}
+          onDailyTrendSelectionsChange={setDailyTrendSelections}
+          itemPivotTab={itemPivotTab}
+          onItemPivotTabChange={setItemPivotTab}
+          onSaveCategory={handleSaveCategory}
         />
-        {!report.productOverviewRows && <div className="empty-note">Product Overview tidak disimpan pada Fase 2 — hanya tersedia saat laporan baru dibuat.</div>}
+        <div className="empty-note">
+          Section Pareto / Traffic / Conversion butuh file Product Performance — belum disimpan ke database, hanya tersedia saat laporan baru dibuat.
+        </div>
       </div>
     </div>
   );

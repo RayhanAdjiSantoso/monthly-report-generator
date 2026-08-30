@@ -4,18 +4,17 @@ import { Dropzone } from '../../components/Dropzone';
 import { DownloadPdfButton } from '../../components/DownloadPdfButton';
 import { HowTo, HowToStep } from '../../components/HowTo';
 import { InlineNotice } from '../../components/InlineNotice';
-import { KpiTable } from '../../components/KpiTable';
 import { OmzetField } from '../../components/OmzetField';
 import { PeriodCompareChip } from '../../components/PeriodCompareChip';
 import { PeriodInputRow } from '../../components/PeriodInputRow';
 import { PeriodWarningBanner } from '../../components/PeriodWarningBanner';
-import { SectionDownloadButton } from '../../components/SectionDownloadButton';
 import { StepIndicator, type Step } from '../../components/StepIndicator';
+import { SlotSourceTabs, SavedSlotCard, type SlotSource } from '../../components/SlotSourceTabs';
 import { usePeriodLabel } from '../../hooks/usePeriodLabel';
-import { toISODate } from '../../lib/dateFmt';
+import { fromISODate, toISODate } from '../../lib/dateFmt';
 import { parseShopeeCSV } from '../../lib/shopeeAds';
 import { categorizeProdukRows, mergeProdukOtomatis, mergeProductMaster, parseProductMasterRows, type ProductMasterEntry } from '../../lib/shopeeDeepDive';
-import { comparePeriodDays } from '../../lib/periodLabel';
+import { comparePeriodDays, daysBetweenInclusive } from '../../lib/periodLabel';
 import { periodFromOverviewFilename } from '../../lib/shopeeOverview';
 import type { SheetRow } from '../../lib/types';
 import { requireColumns, validateFileBasics } from '../../lib/validation';
@@ -23,13 +22,14 @@ import { readSpreadsheetFile } from '../../lib/xlsxUtils';
 import type { PlatformResultData } from '../../lib/summary';
 import { SaveStatus } from '../reports/SaveStatus';
 import { useAutoSave } from '../reports/useAutoSave';
-import { getProductMaster, saveProductMasterEntry } from '../reports/api';
+import { getProductMaster, getSavedPeriod, replaceProductMaster, saveProductMasterEntry } from '../reports/api';
+import { SavedPeriodPicker } from '../reports/SavedPeriodPicker';
+import { formatChannelCoverage, formatSavedAt } from '../reports/savedPeriodLabels';
 import { mapShopeeRows, type ShopeeCategorization } from '../reports/rowMapping';
 import type { MetricSelection } from '../../lib/shopeeDeepDiveItemPivot';
 import type { DailyTrendMetricSelection } from '../../lib/shopeeDeepDiveInsights';
-import type { RawFileEntry, SaveReportPayload } from '../reports/types';
-import { ChannelPivotSection, DailyTrendSection, ItemPivotSection, TingkatkanDenganIklanTable, UnadvertisedVariantsTable, UncategorizedPanel } from './DeepDiveSections';
-import { FundamentalAnalysisSection, ParetoAnalysisSection, ProductRankingSection } from './AnalysisSections';
+import type { RawFileEntry, SaveReportPayload, SavedPeriod } from '../reports/types';
+import { ShopeeReportSections } from './ShopeeReportSections';
 import { buildShopeeDeepDiveReport, type ShopeeDeepDiveReport } from './shopeeDeepDiveReport';
 import { buildShopeeFunnelReport, type ShopeeFunnelReport } from './shopeeFunnelReport';
 import { buildShopeeReport, type ShopeeReport } from './shopeeReport';
@@ -50,8 +50,13 @@ type OverviewFileKey = 'overview-old' | 'overview-cur';
 interface AdsFileState {
   rows: SheetRow[];
   fileName: string;
-  file: File;
+  // Absent when the rows came from stored data (SavedPeriodPicker) instead
+  // of a fresh upload — nothing to re-archive, and raw_uploads isn't used
+  // for reconstruction anyway.
+  file?: File;
 }
+
+type PeriodSide = 'old' | 'cur';
 
 interface DateRange {
   start: string | null;
@@ -113,20 +118,31 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
   const periodCur = usePeriodLabel('Bulan Ini');
 
   const [adsFiles, setAdsFiles] = useState(EMPTY_ADS_FILES);
+  // "Pilih dari data tersimpan" — per period side (lama / ini). When 'saved',
+  // one pick fills every stored ad channel for that side at once; the user
+  // can still drop a fresh file on any individual channel slot to override.
+  const [srcMode, setSrcMode] = useState<Record<PeriodSide, SlotSource>>({ old: 'upload', cur: 'upload' });
+  const [savedPick, setSavedPick] = useState<Record<PeriodSide, SavedPeriod | null>>({ old: null, cur: null });
+  const [pickerOpen, setPickerOpen] = useState<PeriodSide | null>(null);
   const [overviewFiles, setOverviewFiles] = useState(EMPTY_OVERVIEW_FILES);
   // Product Performance is now a 2-slot upload (old & cur), like the other
   // channels — Traffic/Conversion Analysis compare periods, Pareto Analysis
   // uses only the newest. The "cur" file also still drives the older
   // single-snapshot insights (unadvertised variants, Tingkatkan dengan Iklan).
   const [productPerfFiles, setProductPerfFiles] = useState<Record<ProductPerformanceRole, ProductPerformanceFileState | null>>({ old: null, cur: null });
-  // Optional user-uploaded category reference (nama produk -> Category/Series),
-  // overlaid on top of the backend's product_master for this client.
+  // The uploaded "Referensi Kategori Produk" file for this session. On upload
+  // it's also persisted to the backend (full replace of this client's
+  // product_master), so `productMasterRefSaved` tracks whether that succeeded.
   const [productMasterRef, setProductMasterRef] = useState<{ entries: ProductMasterEntry[]; fileName: string } | null>(null);
+  const [productMasterRefSaved, setProductMasterRefSaved] = useState(false);
 
   // Fase 3 — Shopee Deep-Dive: category/series lookup for the current
-  // client, fetched fresh whenever the client changes.
+  // client, fetched fresh whenever the client changes (a previously-uploaded
+  // reference file lands here, so categorization survives across sessions).
   const [productMaster, setProductMaster] = useState<ProductMasterEntry[]>([]);
   useEffect(() => {
+    setProductMasterRef(null);
+    setProductMasterRefSaved(false);
     if (!clientId) {
       setProductMaster([]);
       return;
@@ -291,12 +307,92 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
       }
       setUploadError(null);
       setProductMasterRef({ entries: parsed.entries, fileName: file.name });
+      setProductMasterRefSaved(false);
+      // Persist as this client's whole category mapping (full replace) so it
+      // survives page reloads — without a client selected it stays
+      // session-only.
+      if (clientId) {
+        try {
+          const saved = await replaceProductMaster(clientId, parsed.entries);
+          setProductMaster(saved);
+          setProductMasterRefSaved(true);
+        } catch (err) {
+          setUploadError('Referensi kategori terbaca & dipakai untuk sesi ini, tetapi gagal disimpan ke database: ' + (err as Error).message);
+        }
+      }
       setReport(null);
       setDeepDive(null);
       setFunnelReport(null);
       onInvalidate();
     } catch (err) {
       setUploadError('Gagal membaca isi file: ' + (err as Error).message);
+    }
+  }
+
+  function switchMode(side: PeriodSide, mode: SlotSource) {
+    setSrcMode((prev) => ({ ...prev, [side]: mode }));
+    setAdsFiles((prev) => ({
+      ...prev,
+      [`produk-${side}`]: null,
+      [`produk-otomatis-${side}`]: null,
+      [`toko-${side}`]: null,
+      [`toko-keyword-${side}`]: null,
+      [`live-${side}`]: null,
+    }));
+    setOverviewFiles((prev) => ({ ...prev, [`overview-${side}`]: null }));
+    setSavedPick((prev) => ({ ...prev, [side]: null }));
+    setReport(null);
+    setDeepDive(null);
+    setFunnelReport(null);
+    onInvalidate();
+  }
+
+  async function applySavedPeriod(side: PeriodSide, p: SavedPeriod) {
+    try {
+      const detail = await getSavedPeriod(p.runId, p.role);
+      const ch = detail.channels;
+      const label = p.label ?? detail.period.label ?? '';
+      const mk = (rows: SheetRow[] | undefined): AdsFileState | null => (rows && rows.length ? { rows, fileName: `Data tersimpan · ${label}`.trim() } : null);
+      setAdsFiles((prev) => ({
+        ...prev,
+        [`produk-${side}`]: mk(ch.produk),
+        // produk_otomatis was folded into `produk` at save time — can't be
+        // split back out, and every downstream calc already uses the merged form.
+        [`produk-otomatis-${side}`]: null,
+        [`toko-${side}`]: mk(ch.toko),
+        [`toko-keyword-${side}`]: mk(ch.toko_keyword),
+        [`live-${side}`]: mk(ch.live),
+      }));
+      // Product Overview is brand-scoped daily data — the backend already
+      // filtered it to this period's date range, so it drops straight into
+      // the overview slot. (Product Performance has no date and stays manual.)
+      setOverviewFiles((prev) => ({
+        ...prev,
+        [`overview-${side}`]: detail.overview.length ? { rows: detail.overview, fileName: `Data tersimpan · ${label}`.trim(), period: label } : null,
+      }));
+      setSavedPick((prev) => ({ ...prev, [side]: p }));
+
+      (side === 'old' ? periodOld : periodCur).autoFill(label);
+      const start = detail.period.start ?? p.start;
+      const end = detail.period.end ?? p.end;
+      (side === 'old' ? setPeriodOldRange : setPeriodCurRange)({ start, end });
+      const sd = start ? fromISODate(start) : null;
+      const ed = end ? fromISODate(end) : null;
+      (side === 'old' ? setPeriodOldDays : setPeriodCurDays)(sd && ed ? daysBetweenInclusive(sd, ed) : null);
+
+      // reportConfig carries both sides' omzet for the source run — pick the
+      // one matching the period's own role, drop it into this comparison's
+      // matching side.
+      const cfg = (detail.reportConfig ?? {}) as { omzetOld?: number; omzetCur?: number };
+      const omzet = (p.role === 'old' ? cfg.omzetOld : cfg.omzetCur) ?? null;
+      (side === 'old' ? onOmzetOldChange : onOmzetCurChange)(omzet && omzet > 0 ? omzet : null);
+
+      setReport(null);
+      setDeepDive(null);
+      setFunnelReport(null);
+      onInvalidate();
+    } catch (err) {
+      setUploadError('Gagal memuat data tersimpan: ' + (err as Error).message);
     }
   }
 
@@ -404,9 +500,13 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
     onOmzetOldChange(null);
     onOmzetCurChange(null);
     setAdsFiles(EMPTY_ADS_FILES);
+    setSrcMode({ old: 'upload', cur: 'upload' });
+    setSavedPick({ old: null, cur: null });
+    setPickerOpen(null);
     setOverviewFiles(EMPTY_OVERVIEW_FILES);
     setProductPerfFiles({ old: null, cur: null });
     setProductMasterRef(null);
+    setProductMasterRefSaved(false);
     setPeriodOldDays(null);
     setPeriodCurDays(null);
     setPeriodOldRange(EMPTY_RANGE);
@@ -444,22 +544,30 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
           ...mapShopeeRows(adsFiles['live-old']?.rows ?? [], 'live', 'old'),
           ...mapShopeeRows(adsFiles['live-cur']?.rows ?? [], 'live', 'cur'),
         ],
+        // Persisted per-day into a brand-scoped store (keyed by tanggal) —
+        // sending rows sourced from stored data is harmless (upsert is
+        // idempotent).
+        shopeeOverview: [...(overviewFiles['overview-old']?.rows ?? []), ...(overviewFiles['overview-cur']?.rows ?? [])],
       },
     };
   }
 
   function buildSaveFiles(): RawFileEntry[] {
+    // Slots sourced from stored data have no `file` — skip them (their rows
+    // are still persisted via buildSavePayload; raw_uploads is archive-only).
+    const fileEntry = (state: AdsFileState | null, channel: string, periodRole: 'old' | 'cur'): RawFileEntry | null =>
+      state?.file ? { file: state.file, channel, periodRole } : null;
     const entries: (RawFileEntry | null)[] = [
-      adsFiles['toko-old'] ? { file: adsFiles['toko-old'].file, channel: 'toko', periodRole: 'old' } : null,
-      adsFiles['toko-cur'] ? { file: adsFiles['toko-cur'].file, channel: 'toko', periodRole: 'cur' } : null,
-      adsFiles['produk-old'] ? { file: adsFiles['produk-old'].file, channel: 'produk', periodRole: 'old' } : null,
-      adsFiles['produk-cur'] ? { file: adsFiles['produk-cur'].file, channel: 'produk', periodRole: 'cur' } : null,
-      adsFiles['produk-otomatis-old'] ? { file: adsFiles['produk-otomatis-old'].file, channel: 'produk_otomatis', periodRole: 'old' } : null,
-      adsFiles['produk-otomatis-cur'] ? { file: adsFiles['produk-otomatis-cur'].file, channel: 'produk_otomatis', periodRole: 'cur' } : null,
-      adsFiles['toko-keyword-old'] ? { file: adsFiles['toko-keyword-old'].file, channel: 'toko_keyword', periodRole: 'old' } : null,
-      adsFiles['toko-keyword-cur'] ? { file: adsFiles['toko-keyword-cur'].file, channel: 'toko_keyword', periodRole: 'cur' } : null,
-      adsFiles['live-old'] ? { file: adsFiles['live-old'].file, channel: 'live', periodRole: 'old' } : null,
-      adsFiles['live-cur'] ? { file: adsFiles['live-cur'].file, channel: 'live', periodRole: 'cur' } : null,
+      fileEntry(adsFiles['toko-old'], 'toko', 'old'),
+      fileEntry(adsFiles['toko-cur'], 'toko', 'cur'),
+      fileEntry(adsFiles['produk-old'], 'produk', 'old'),
+      fileEntry(adsFiles['produk-cur'], 'produk', 'cur'),
+      fileEntry(adsFiles['produk-otomatis-old'], 'produk_otomatis', 'old'),
+      fileEntry(adsFiles['produk-otomatis-cur'], 'produk_otomatis', 'cur'),
+      fileEntry(adsFiles['toko-keyword-old'], 'toko_keyword', 'old'),
+      fileEntry(adsFiles['toko-keyword-cur'], 'toko_keyword', 'cur'),
+      fileEntry(adsFiles['live-old'], 'live', 'old'),
+      fileEntry(adsFiles['live-cur'], 'live', 'cur'),
       productPerfFiles.old ? { file: productPerfFiles.old.file, channel: 'produk_performance', periodRole: 'old' } : null,
       productPerfFiles.cur ? { file: productPerfFiles.cur.file, channel: 'produk_performance', periodRole: 'cur' } : null,
     ];
@@ -570,6 +678,57 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
 
       <div className="source-block">
         <div className="source-header">
+          <div className="source-label shopee-label">Sumber Data Iklan</div>
+          <span className="sec-badge">upload file baru, atau pakai periode yang pernah disimpan</span>
+        </div>
+        <div className="dz-grid-4">
+          {(['old', 'cur'] as const).map((side) => (
+            <div key={side}>
+              <div className="dz-tag" style={{ marginBottom: '.4rem' }}>{side === 'old' ? 'Periode Lalu' : 'Periode Ini'}</div>
+              <SlotSourceTabs
+                value={srcMode[side]}
+                onChange={(m) => switchMode(side, m)}
+                disabledSavedReason={clientId ? null : 'Pilih klien dulu di bagian atas halaman'}
+              />
+              {srcMode[side] === 'saved' && (
+                <SavedSlotCard
+                  picked={
+                    savedPick[side]
+                      ? {
+                          title: savedPick[side]!.label || 'Tanpa label',
+                          sourceComparison: savedPick[side]!.sourceComparison,
+                          savedAt: formatSavedAt(savedPick[side]!.savedAt),
+                          summary: formatChannelCoverage(savedPick[side]!.channels),
+                        }
+                      : null
+                  }
+                  onOpen={() => setPickerOpen(side)}
+                  onClear={() => switchMode(side, 'saved')}
+                  hint="Iklan Produk / Toko / Keyword / Live akan terisi otomatis"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        {(srcMode.old === 'saved' || srcMode.cur === 'saved') && (
+          <InlineNotice tone="info" title="Yang ikut & tidak ikut dari data tersimpan">
+            Iklan Produk / Toko / Keyword / Live dan Product Overview (tren harian) terisi otomatis. <strong>Product Performance</strong> tidak punya tanggal sehingga tetap perlu diupload manual di bawah — untuk section Pareto / Traffic / Conversion. Iklan Produk Otomatis sudah tergabung ke Iklan Produk.
+          </InlineNotice>
+        )}
+      </div>
+
+      {pickerOpen && clientId && (
+        <SavedPeriodPicker
+          clientId={clientId}
+          platform="shopee"
+          variant="period"
+          onClose={() => setPickerOpen(null)}
+          onPick={((side) => (p: SavedPeriod) => applySavedPeriod(side, p))(pickerOpen)}
+        />
+      )}
+
+      <div className="source-block">
+        <div className="source-header">
           <div className="source-label shopee-label">Iklan Produk</div>
         </div>
         <div className="dz-grid-4">
@@ -595,7 +754,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
           <span className="sec-badge">opsional — memetakan nama produk ke Category &amp; Series</span>
         </div>
         <div className="empty-note" style={{ padding: '0 1.4rem .6rem' }}>
-          Satu file berisi kolom <strong>nama produk</strong>, <strong>Category</strong>, dan <strong>Series</strong> — dipakai untuk mengelompokkan produk di "Analisis Per Item". Tanpa file ini, produk yang belum terpetakan tetap bisa dilengkapi manual lewat panel "Produk Belum Terkategori".
+          Satu file berisi kolom <strong>nama produk</strong>, <strong>Category</strong>, dan <strong>Series</strong> — dipakai untuk mengelompokkan produk di "Analisis Per Item". File ini <strong>disimpan ke database per klien</strong>: cukup upload sekali, generate berikutnya otomatis terkategori. Upload file baru akan <strong>mengganti</strong> seluruh pemetaan klien ini.
         </div>
         <div className="dz-grid-4">
           <Dropzone
@@ -604,11 +763,20 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
             onFile={handleProductMasterRefFile}
             loaded={Boolean(productMasterRef)}
             fileName={productMasterRef?.fileName}
-            infoText={productMasterRef ? `${productMasterRef.entries.length} produk terpetakan` : undefined}
+            infoText={
+              productMasterRef
+                ? `${productMasterRef.entries.length} produk terpetakan${productMasterRefSaved ? ' · tersimpan ke database' : clientId ? '' : ' · sesi ini saja (pilih klien untuk menyimpan)'}`
+                : undefined
+            }
             className="shopee-dz"
             icon="🏷️"
           />
         </div>
+        {!productMasterRef && productMaster.length > 0 && (
+          <div className="empty-note" style={{ padding: '.2rem 1.4rem 0', color: 'var(--shopee)' }}>
+            {productMaster.length} produk sudah terpetakan di database untuk klien ini — dipakai otomatis saat generate. Upload file hanya jika ingin memperbarui.
+          </div>
+        )}
       </div>
 
       <div className="source-block">
@@ -713,72 +881,23 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
             <div className="report-meta num">Generated {generatedAt}</div>
           </div>
           <div data-role="r-body">
-            <PeriodWarningBanner message={report.periodWarning} />
-
             {deepDive && (
-              <>
-                <ChannelPivotSection title="Iklan Shopee Overall" badge="Semua Channel" rows={deepDive.overall} p1={report.p1} p2={report.p2} />
-                <ChannelPivotSection title="Iklan Produk" badge="+ Iklan Produk Otomatis" rows={deepDive.produk} p1={report.p1} p2={report.p2} />
-                {hasTokoData && <ChannelPivotSection title="Iklan Toko" badge="Shop+ Ads" rows={deepDive.toko} p1={report.p1} p2={report.p2} />}
-                {hasLiveData && <ChannelPivotSection title="Iklan Live" badge="Penonton-based" rows={deepDive.live} p1={report.p1} p2={report.p2} />}
-
-                {report.productOverviewRows && (
-                  <div className="sec-block">
-                    <div className="sec-heading shopee-heading">
-                      Shopee Toko <span className="sec-badge">Product Overview</span>
-                      <SectionDownloadButton />
-                    </div>
-                    <div style={{ padding: '0 1.4rem 1.4rem' }}>
-                      <KpiTable rows={report.productOverviewRows} p1={report.p1} p2={report.p2} />
-                    </div>
-                  </div>
-                )}
-
-                {funnelReport && (
-                  <>
-                    <FundamentalAnalysisSection values={funnelReport.values} tree={funnelReport.tree} liveGmv={funnelReport.liveGmv} p1={report.p1} p2={report.p2} />
-                    <ParetoAnalysisSection rows={funnelReport.pareto} hasData={funnelReport.hasProductPerfCur} periodLabel={report.p2} />
-                    <ProductRankingSection
-                      title="Traffic Analysis"
-                      badge="Product Performance · ranking traffic per produk"
-                      rankings={funnelReport.traffic}
-                      hasCur={funnelReport.hasProductPerfCur}
-                      hasOld={funnelReport.hasProductPerfOld}
-                      p1={report.p1}
-                      p2={report.p2}
-                    />
-                    <ProductRankingSection
-                      title="Conversion Analysis"
-                      badge="Product Performance · ranking konversi per produk"
-                      rankings={funnelReport.conversion}
-                      hasCur={funnelReport.hasProductPerfCur}
-                      hasOld={funnelReport.hasProductPerfOld}
-                      p1={report.p1}
-                      p2={report.p2}
-                    />
-                  </>
-                )}
-
-                <ItemPivotSection
-                  produkRows={deepDive.produkPivot}
-                  produkSelections={deepDive.produkSelections}
-                  onProdukSelectionsChange={setProdukSelections}
-                  keywordRows={deepDive.keywordPivot}
-                  hasKeywordData={hasTokoKeywordData}
-                  keywordSelections={deepDive.keywordSelections}
-                  onKeywordSelectionsChange={setKeywordSelections}
-                  customMetrics={customMetrics}
-                  onAddCustomMetric={(sel) => setCustomMetrics((prev) => [...prev, sel])}
-                  activeTab={hasTokoKeywordData ? itemPivotTab : 'produk'}
-                  onTabChange={setItemPivotTab}
-                  p1={report.p1}
-                  p2={report.p2}
-                />
-                <UncategorizedPanel names={deepDive.uncategorized} onSave={handleSaveCategory} />
-                <UnadvertisedVariantsTable rows={deepDive.unadvertisedVariants} hasFile={deepDive.hasProductPerformanceData} />
-                <TingkatkanDenganIklanTable rows={deepDive.tingkatkanDenganIklanRows} />
-                <DailyTrendSection rows={deepDive.dailyTrendPivot} selections={deepDive.dailyTrendSelections} onSelectionsChange={setDailyTrendSelections} p1={report.p1} p2={report.p2} />
-              </>
+              <ShopeeReportSections
+                report={report}
+                deepDive={deepDive}
+                funnelReport={funnelReport}
+                hasTokoData={hasTokoData}
+                hasLiveData={hasLiveData}
+                hasTokoKeywordData={hasTokoKeywordData}
+                customMetrics={customMetrics}
+                onAddCustomMetric={(sel) => setCustomMetrics((prev) => [...prev, sel])}
+                onProdukSelectionsChange={setProdukSelections}
+                onKeywordSelectionsChange={setKeywordSelections}
+                onDailyTrendSelectionsChange={setDailyTrendSelections}
+                itemPivotTab={itemPivotTab}
+                onItemPivotTabChange={setItemPivotTab}
+                onSaveCategory={handleSaveCategory}
+              />
             )}
           </div>
           <div className="action-row" style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>

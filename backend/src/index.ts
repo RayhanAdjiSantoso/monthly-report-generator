@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { clientsRouter } from './routes/clients.js';
 import { productMasterRouter } from './routes/productMaster.js';
 import { reportsRouter } from './routes/reports.js';
+import { savedPeriodsRouter } from './routes/savedPeriods.js';
 
 // Exported so /api/index.ts (the Vercel adapter, repo root) can import this
 // exact app instead of duplicating route setup. Everything below is
@@ -19,6 +20,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/clients', clientsRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/saved-periods', savedPeriodsRouter);
 app.use('/api/product-master', productMasterRouter);
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
