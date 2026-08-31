@@ -100,8 +100,8 @@ describe('buildShopeeDeepDiveReport — full pipeline on real fixtures', () => {
     expect(report.uncategorized.length).toBeGreaterThan(0);
   });
 
-  it('flags the 5 known unadvertised-but-selling variants', () => {
-    expect(report.unadvertisedVariants).toHaveLength(5);
+  it('flags the 2 known unadvertised-but-selling products', () => {
+    expect(report.unadvertisedProducts.map((p) => p.kodeProduk)).toEqual(['23451626161', '45602963557']);
   });
 
   it('marks hasProductPerformanceData true when a Product Performance file was provided', () => {
@@ -140,7 +140,7 @@ describe('buildShopeeDeepDiveReport — full pipeline on real fixtures', () => {
       omzetOld: 0,
       omzetCur: 0,
     });
-    expect(minimal.unadvertisedVariants).toEqual([]);
+    expect(minimal.unadvertisedProducts).toEqual([]);
     expect(minimal.hasProductPerformanceData).toBe(false);
     expect(minimal.dailyTrendPivot).toEqual([]);
     expect(minimal.keywordPivot).toEqual([]);

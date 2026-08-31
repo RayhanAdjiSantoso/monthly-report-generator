@@ -128,7 +128,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
   // Product Performance is now a 2-slot upload (old & cur), like the other
   // channels — Traffic/Conversion Analysis compare periods, Pareto Analysis
   // uses only the newest. The "cur" file also still drives the older
-  // single-snapshot insights (unadvertised variants, Tingkatkan dengan Iklan).
+  // single-snapshot insights (unadvertised products, Tingkatkan dengan Iklan).
   const [productPerfFiles, setProductPerfFiles] = useState<Record<ProductPerformanceRole, ProductPerformanceFileState | null>>({ old: null, cur: null });
   // The uploaded "Referensi Kategori Produk" file for this session. On upload
   // it's also persisted to the backend (full replace of this client's

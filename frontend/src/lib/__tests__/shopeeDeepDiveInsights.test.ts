@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
 import { parseShopeeCSV } from '../shopeeAds';
-import { buildDailyTrendPivot, collectAdvertisedProductCodes, findUnadvertisedVariants, rankVariantsBySiapDikirim, type DailyTrendMetricSelection } from '../shopeeDeepDiveInsights';
+import { buildDailyTrendPivot, collectAdvertisedProductCodes, findUnadvertisedProducts, rankProductsBySiapDikirim, type DailyTrendMetricSelection } from '../shopeeDeepDiveInsights';
 import type { SheetRow } from '../types';
 
 const FIXTURES = new URL('./fixtures/shopee-deepdive/', import.meta.url);
@@ -16,13 +16,13 @@ function readFixtureText(name: string): string {
   return readFileSync(fileURLToPath(new URL(name, FIXTURES)), 'utf8');
 }
 
-describe('rankVariantsBySiapDikirim — real "Produk dengan Performa Terbaik" sheet', () => {
+describe('rankProductsBySiapDikirim — real "Produk dengan Performa Terbaik" sheet', () => {
   const rows = readXlsxSheet('product-performance.xlsx', 'Produk dengan Performa Terbaik');
-  const ranked = rankVariantsBySiapDikirim(rows);
+  const ranked = rankProductsBySiapDikirim(rows);
 
-  it('drops product-level aggregate rows (Kode Variasi === "-") and keeps only real variant rows', () => {
-    // Ground truth counted independently from the fixture: 179 total rows, 86 real variant rows.
-    expect(ranked).toHaveLength(86);
+  it('keeps only the product-level aggregate rows (Kode Variasi === "-")', () => {
+    // Ground truth counted independently from the fixture: 179 total rows, 93 product-level rows.
+    expect(ranked).toHaveLength(93);
   });
 
   it('sorts by Penjualan (Pesanan Siap Dikirim) descending', () => {
@@ -31,12 +31,27 @@ describe('rankVariantsBySiapDikirim — real "Produk dengan Performa Terbaik" sh
     }
   });
 
-  it('parses the top variant correctly (Indonesian-locale "37.715.929" -> 37715929)', () => {
-    expect(ranked[0]).toMatchObject({ kodeProduk: '50458878752', namaVariasi: 'BB+NIB100ML', penjualanSiapDikirim: 37715929 });
+  it('parses the top product with its traffic/conversion columns (Indonesian-locale strings)', () => {
+    expect(ranked[0]).toMatchObject({
+      kodeProduk: '50458878752',
+      penjualanSiapDikirim: 37715929,
+      jumlahProdukDilihat: 141304,
+      persentaseKlik: 3.48,
+      tingkatKonversiSiapDikirim: 11.55,
+    });
+  });
+
+  it('hangs each product\'s own variant rows off it, revenue-sorted', () => {
+    const vol2 = ranked.find((p) => p.kodeProduk === '23451626161')!;
+    expect(vol2.variants).toHaveLength(4);
+    for (let i = 1; i < vol2.variants.length; i++) {
+      expect(vol2.variants[i].penjualanSiapDikirim).toBeLessThanOrEqual(vol2.variants[i - 1].penjualanSiapDikirim);
+    }
+    expect(vol2.variants.every((v) => v.kodeVariasi !== '-' && v.kodeVariasi !== '')).toBe(true);
   });
 });
 
-describe('collectAdvertisedProductCodes + findUnadvertisedVariants — real cross-check', () => {
+describe('collectAdvertisedProductCodes + findUnadvertisedProducts — real cross-check', () => {
   const produk = parseShopeeCSV(readFixtureText('iklan-produk.csv')).rows;
   const otomatis = parseShopeeCSV(readFixtureText('iklan-produk-otomatis.csv')).rows;
   const toko = parseShopeeCSV(readFixtureText('iklan-toko.csv')).rows;
@@ -49,23 +64,23 @@ describe('collectAdvertisedProductCodes + findUnadvertisedVariants — real cros
     expect(advertised.size).toBe(56);
   });
 
-  it('flags 5 real variant rows as sold-but-never-advertised, all ranked-highest-first', () => {
+  it('flags the 2 selling-but-never-advertised products, ranked highest revenue first', () => {
     const rows = readXlsxSheet('product-performance.xlsx', 'Produk dengan Performa Terbaik');
-    const ranked = rankVariantsBySiapDikirim(rows);
-    const unadvertised = findUnadvertisedVariants(ranked, advertised);
-    expect(unadvertised).toHaveLength(5);
-    expect(unadvertised.every((v) => v.kodeProduk === '23451626161' || v.kodeProduk === '45602963557')).toBe(true);
-    // still sorted by revenue within the filtered subset
+    const ranked = rankProductsBySiapDikirim(rows);
+    const unadvertised = findUnadvertisedProducts(ranked, advertised);
+    expect(unadvertised.map((p) => p.kodeProduk)).toEqual(['23451626161', '45602963557']);
+    // every row genuinely sells and is ranked by revenue within the filtered subset
+    expect(unadvertised.every((p) => p.penjualanSiapDikirim > 0)).toBe(true);
     for (let i = 1; i < unadvertised.length; i++) {
       expect(unadvertised[i].penjualanSiapDikirim).toBeLessThanOrEqual(unadvertised[i - 1].penjualanSiapDikirim);
     }
   });
 
-  it('does NOT flag the top-selling variant, which really is advertised in the real data', () => {
+  it('does NOT flag the top-selling product, which really is advertised in the real data', () => {
     const rows = readXlsxSheet('product-performance.xlsx', 'Produk dengan Performa Terbaik');
-    const ranked = rankVariantsBySiapDikirim(rows);
-    const unadvertised = findUnadvertisedVariants(ranked, advertised);
-    expect(unadvertised.some((v) => v.kodeProduk === '50458878752')).toBe(false);
+    const ranked = rankProductsBySiapDikirim(rows);
+    const unadvertised = findUnadvertisedProducts(ranked, advertised);
+    expect(unadvertised.some((p) => p.kodeProduk === '50458878752')).toBe(false);
   });
 });
 
