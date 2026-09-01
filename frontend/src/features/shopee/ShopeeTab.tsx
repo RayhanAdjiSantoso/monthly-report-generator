@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Dropzone } from '../../components/Dropzone';
+import { SectionNav } from '../../components/SectionNav';
 import { DownloadPdfButton } from '../../components/DownloadPdfButton';
 import { HowTo, HowToStep } from '../../components/HowTo';
 import { InlineNotice } from '../../components/InlineNotice';
@@ -178,6 +179,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
   const [periodCurRange, setPeriodCurRange] = useState<DateRange>(EMPTY_RANGE);
 
   const [report, setReport] = useState<ShopeeReport | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const [deepDive, setDeepDive] = useState<ShopeeDeepDiveReport | null>(null);
   const [funnelReport, setFunnelReport] = useState<ShopeeFunnelReport | null>(null);
   const [itemPivotTab, setItemPivotTab] = useState<'produk' | 'keyword'>('produk');
@@ -880,7 +882,8 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
             </div>
             <div className="report-meta num">Generated {generatedAt}</div>
           </div>
-          <div data-role="r-body">
+          <SectionNav bodyRef={bodyRef} scanKey={report} accent="var(--shopee)" />
+          <div data-role="r-body" ref={bodyRef}>
             {deepDive && (
               <ShopeeReportSections
                 report={report}
