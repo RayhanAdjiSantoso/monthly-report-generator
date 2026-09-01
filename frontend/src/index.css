@@ -313,6 +313,12 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .pdf-export-mode .sec-download-btn{display:none!important}
 .pdf-export-mode .metric-drag-handle,
 .pdf-export-mode .metric-remove-btn{display:none!important}
+/* html2canvas 1.4.1 drops text that sits inside an inline-flex box, so the
+   Changes column's delta pills export as empty coloured lozenges. Fall back
+   to inline-block (with a plain margin standing in for the flex `gap`) only
+   during export — the on-screen pill keeps its flex layout. */
+.pdf-export-mode .delta-pill{display:inline-block}
+.pdf-export-mode .delta-pill .delta-arrow{margin-right:.3rem}
 
 /* ── Period input ── */
 .period-input-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem}
