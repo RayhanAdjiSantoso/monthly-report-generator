@@ -337,6 +337,24 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .pdf-export-mode .delta-pill{display:inline-block}
 .pdf-export-mode .delta-pill .delta-arrow{margin-right:.3rem}
 
+/* ── Section PNG export ("⬇ PNG" on a section card) — size every column to its
+   content. On screen the wide tables sit in horizontal-scroll wrappers and
+   stretch to fill the card, so a plain snapshot clips or squeezes columns.
+   For the duration of the capture only, let each table shrink-wrap to its
+   content and each wrapper widen to fit. Vertical row caps (max-height on the
+   Analisis Per Item / Tren Harian scroll areas) are left untouched. ── */
+.png-fit-content .sec-block{overflow:visible!important;width:max-content!important;max-width:none!important}
+.png-fit-content .tbl-scroll,
+.png-fit-content .sec-block [style*="overflow"]{width:max-content!important;max-width:none!important;overflow-x:visible!important}
+/* Tables normally stretch to fill the card (width:100%) and the label column
+   is pinned to a fixed 44% — both spread the columns far past their content.
+   Drop them so every column collapses to its natural width. */
+.png-fit-content .sec-block table{width:auto!important}
+.png-fit-content .sec-block .kpi-table th:first-child,
+.png-fit-content .sec-block .kpi-table td:first-child{width:auto!important}
+.png-fit-content .sec-block th,
+.png-fit-content .sec-block td{white-space:nowrap!important}
+
 /* ── Period input ── */
 .period-input-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem}
 .period-input-field{background:var(--surface);border-radius:10px;border:1.5px solid var(--border);padding:.7rem 1rem;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:4px}
