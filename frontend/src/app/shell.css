@@ -1,0 +1,582 @@
+/* ============================================================================
+   Site shell + home page + generator-page frame (v2).
+   Loaded after index.css. The report/section tables keep their own styles;
+   this file owns the header, landing page, generator layout, and a restyle
+   pass over the upload form (cards + colour + a sticky Generate bar).
+   ========================================================================= */
+
+/* ── Shared width container — every top-level band uses this so the logo,
+   the hero headline, section headings and the generator columns all share
+   one left/right edge. No more "header inset, hero full-bleed" mismatch. ── */
+.bleed{
+  width:100%;
+  max-width:calc(var(--content-max) + 2 * var(--page-x));
+  margin-inline:auto;
+  padding-inline:var(--page-x);
+}
+
+/* ── Motion primitive (used by <Reveal/>) ───────────────────────────────── */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s var(--ease-out),transform .7s var(--ease-out)}
+.reveal-in{opacity:1;transform:none}
+/* Hero text reveal — staggered fade + rise (+ a touch of scale on the CTAs).
+   Per-element distance/delay/scale come from --hr-* set inline. ~1s total. */
+@keyframes hero-reveal{from{opacity:0;transform:translateY(var(--hr-y,16px)) scale(var(--hr-s,1))}to{opacity:1;transform:translateY(0) scale(1)}}
+.hero-reveal{opacity:0;animation:hero-reveal var(--hr-d,580ms) var(--ease-out) var(--hr-delay,0ms) both}
+.hero-line{display:block}
+@media (prefers-reduced-motion: reduce){.hero-reveal{animation:none;opacity:1;transform:none}}
+
+/* ── Site header ────────────────────────────────────────────────────────── */
+.site-header{
+  position:sticky;top:0;z-index:1000;
+  background:rgba(255,255,255,.72);
+  -webkit-backdrop-filter:saturate(180%) blur(18px);backdrop-filter:saturate(180%) blur(18px);
+  border-bottom:1px solid transparent;
+  transition:border-color .25s ease,box-shadow .25s ease,background .25s ease;
+}
+.site-header.scrolled{
+  border-bottom-color:var(--border);
+  box-shadow:0 1px 20px rgba(15,26,58,.06);
+  background:rgba(255,255,255,.85);
+}
+.site-header.transparent-top{
+  background:transparent;border-bottom-color:transparent;box-shadow:none;
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+}
+.site-header-inner{
+  height:66px;
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;
+}
+.site-header-spacer{display:block}
+
+.site-brand{display:flex;align-items:center;gap:11px;text-decoration:none;flex-shrink:0;justify-self:start}
+.site-brand-logo{width:38px;height:38px;border-radius:10px;flex-shrink:0;display:block}
+.site-brand-name{font-size:1.05rem;font-weight:750;letter-spacing:-.02em;color:var(--text);white-space:nowrap}
+.site-brand-name-thin{font-weight:500;color:var(--muted)}
+
+.site-nav{display:flex;align-items:center;gap:6px;justify-self:center}
+.site-nav-link{
+  font-size:1rem;font-weight:650;color:var(--muted);text-decoration:none;
+  padding:.45rem .95rem;border-radius:9px;transition:color .15s,background .15s;letter-spacing:-.01em;
+}
+.site-nav-link:hover{color:var(--text);background:var(--s2)}
+.site-nav-link.active{color:var(--acc);background:var(--acc-100)}
+
+/* ── Main region ────────────────────────────────────────────────────────── */
+.site-main{min-height:calc(100vh - 66px)}
+
+/* ── Home page ──────────────────────────────────────────────────────────── */
+/* Bright, spacious, premium-SaaS. A big faded MIL watermark + a slow particle
+   network + soft gradient orbs sit behind the content as a "technology layer";
+   the page stays predominantly white. All motion is transform/opacity only and
+   respects prefers-reduced-motion. */
+.home{
+  display:flex;flex-direction:column;position:relative;
+  background:linear-gradient(180deg,#fdfdfc 0%,#f7f9fd 46%,var(--bg) 100%);
+}
+
+.home-hero{position:relative;overflow:hidden;padding-block:clamp(3.5rem,9vw,7rem) clamp(2rem,4vw,3.5rem)}
+.home-hero-inner{position:relative;z-index:2}
+.home-hero-bg{position:absolute;inset:0;z-index:0;pointer-events:none}
+
+/* Oversized watermark logo — bleeds off the top-right, whisper-faint, blurred,
+   radially masked so it dissolves into the page. Parallax handled in JS. */
+.home-watermark{
+  position:absolute;right:-22vw;top:-34vh;width:min(82vw,1000px);height:auto;
+  opacity:.045;filter:blur(3px) saturate(.5);
+  -webkit-mask-image:radial-gradient(closest-side,#000 38%,transparent 100%);
+  mask-image:radial-gradient(closest-side,#000 38%,transparent 100%);
+  will-change:transform;user-select:none;
+}
+
+/* Faint dot-grid, fading out toward the bottom of the hero. */
+.home-gridlines{
+  position:absolute;inset:0;
+  background-image:radial-gradient(circle at 1px 1px,rgba(47,84,212,.07) 1px,transparent 0);
+  background-size:46px 46px;
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 72%);
+  mask-image:linear-gradient(180deg,#000 0%,transparent 72%);
+}
+
+.home-particles{position:absolute;inset:0;width:100%;height:100%;opacity:.9}
+
+.home-orbs{position:absolute;inset:0;will-change:transform}
+.orb{position:absolute;border-radius:50%;filter:blur(70px)}
+.orb-a{width:min(44vw,540px);height:min(44vw,540px);left:-12vw;top:-18vw;opacity:.42;background:radial-gradient(circle at 30% 30%,#2f54d4,transparent 68%);animation:orb-float-a 24s ease-in-out infinite}
+.orb-b{width:min(36vw,460px);height:min(36vw,460px);right:-10vw;top:-8vw;opacity:.3;background:radial-gradient(circle at 60% 40%,#00c2e0,transparent 66%);animation:orb-float-b 28s ease-in-out infinite}
+.orb-c{width:min(34vw,440px);height:min(34vw,440px);left:36%;bottom:-30vw;filter:blur(88px);opacity:.22;background:radial-gradient(circle at 50% 50%,#c7d2f7,transparent 72%);animation:orb-float-a 32s ease-in-out infinite reverse}
+@keyframes orb-float-a{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(4%,6%) scale(1.08)}}
+@keyframes orb-float-b{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-5%,4%) scale(1.1)}}
+
+.home-eyebrow{font-size:.8rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--acc)}
+.home-eyebrow::before{content:'';display:inline-block;width:22px;height:2px;background:var(--acc);border-radius:2px;vertical-align:middle;margin-right:.6rem;opacity:.7}
+.home-title{margin-top:1.1rem;font-size:clamp(2.5rem,6.4vw,4.6rem);line-height:1.03;font-weight:800;letter-spacing:-.038em;color:var(--text)}
+.home-title-grad{background:linear-gradient(115deg,var(--acc) 8%,var(--acc2) 44%,var(--cyan) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.home-lede{margin-top:1.5rem;max-width:39rem;font-size:clamp(1.02rem,1.7vw,1.22rem);line-height:1.62;color:var(--muted)}
+.home-cta-row{margin-top:2.4rem;display:flex;gap:.9rem;flex-wrap:wrap}
+
+/* Big CTAs (home only — the global .btn is untouched). */
+.home-cta-lg{padding:.95rem 1.95rem;font-size:1rem;border-radius:13px;position:relative;overflow:hidden;isolation:isolate}
+.home-cta-lg.btn-primary{box-shadow:0 8px 26px rgba(30,62,184,.3)}
+.home-cta-lg.btn-primary::after{
+  content:'';position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.4) 50%,transparent 68%);
+  transform:translateX(-130%);transition:transform .65s var(--ease-out);
+}
+.home-cta-lg.btn-primary:hover::after{transform:translateX(130%)}
+.home-cta-lg.btn-ghost{background:var(--surface);border:1.5px solid var(--border);color:var(--text);box-shadow:var(--shadow-sm)}
+.home-cta-lg.btn-ghost:hover{border-color:var(--acc-300);color:var(--acc);transform:translateY(-1px);box-shadow:var(--shadow)}
+.home-cta-lg:active{transform:translateY(1px) scale(.992)}
+.home-cta-lg:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+
+.home-section{position:relative;z-index:1;padding-block:clamp(3rem,6.5vw,5rem)}
+.home-section-head{max-width:40rem;margin-bottom:2.6rem}
+.home-h2{font-size:clamp(1.8rem,3.6vw,2.7rem);font-weight:800;letter-spacing:-.032em;color:var(--text);line-height:1.1}
+.home-sub{margin-top:.8rem;font-size:1.04rem;line-height:1.55;color:var(--muted)}
+
+.home-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:1.15rem}
+.home-card{
+  --card-accent:var(--acc);--mx:50%;--my:0%;--rx:0deg;--ry:0deg;
+  display:flex;flex-direction:column;gap:.35rem;
+  padding:1.6rem 1.6rem 1.5rem;border-radius:20px;
+  background:var(--surface);border:1px solid var(--border);
+  box-shadow:0 1px 3px rgba(15,26,58,.05),0 10px 26px rgba(15,26,58,.05);
+  text-decoration:none;position:relative;overflow:hidden;transform-style:preserve-3d;
+  transform:perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(0);
+  transition:transform .28s var(--ease-out),box-shadow .3s var(--ease-out),border-color .3s;
+}
+.home-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--card-accent),transparent);opacity:0;transition:opacity .3s}
+.home-card-glow{
+  position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .35s;
+  background:radial-gradient(260px circle at var(--mx) var(--my),rgba(47,84,212,.1),transparent 62%);
+}
+.home-card:hover{
+  transform:perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(-6px);
+  box-shadow:0 2px 6px rgba(15,26,58,.06),0 22px 50px rgba(15,26,58,.12);
+  border-color:var(--acc-300);
+}
+.home-card:hover::before,.home-card:hover .home-card-glow{opacity:1}
+.home-card > *{position:relative}
+.home-card-mark{
+  width:44px;height:44px;border-radius:12px;margin-bottom:.65rem;
+  display:flex;align-items:center;justify-content:center;font-size:1.05rem;font-weight:800;
+  color:var(--card-accent);background:var(--acc-100);
+}
+.home-card-label{font-size:1.08rem;font-weight:750;letter-spacing:-.02em;color:var(--text)}
+.home-card-tagline{font-size:.78rem;font-weight:650;color:var(--card-accent)}
+.home-card-desc{margin-top:.4rem;font-size:.85rem;line-height:1.55;color:var(--muted)}
+.home-card-go{margin-top:1rem;font-size:.8rem;font-weight:750;color:var(--card-accent);transition:letter-spacing .25s}
+.home-card:hover .home-card-go{letter-spacing:.02em}
+
+.home-section-flow{border-top:1px solid var(--border)}
+.home-flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.7rem}
+.home-flow-item{border-top:2px solid var(--acc);padding-top:1.15rem}
+.home-flow-n{font-size:.82rem;font-weight:800;letter-spacing:.12em;color:var(--acc)}
+.home-flow-title{margin-top:.55rem;font-size:1.18rem;font-weight:750;letter-spacing:-.02em;color:var(--text)}
+.home-flow-body{margin-top:.55rem;font-size:.92rem;line-height:1.6;color:var(--muted)}
+
+.home-closing{margin-block:clamp(1rem,3vw,2rem) clamp(3.5rem,8vw,5.5rem);position:relative;z-index:1}
+.home-closing-inner{
+  border-radius:28px;overflow:hidden;position:relative;
+  background:linear-gradient(120deg,var(--acc) 0%,var(--acc2) 52%,#0099bb 100%);
+  padding:clamp(3rem,6vw,4.75rem) clamp(2rem,5vw,4rem);
+  display:flex;flex-direction:column;align-items:flex-start;gap:1.7rem;
+  box-shadow:0 24px 60px rgba(30,62,184,.24);
+}
+.home-closing-glow{position:absolute;right:-8%;top:-40%;width:min(46%,420px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.28),transparent 66%);pointer-events:none}
+.home-closing .home-h2{color:#fff;position:relative}
+.home-closing .home-cta-lg{position:relative;background:#fff;color:var(--acc);box-shadow:0 10px 30px rgba(0,0,0,.16)}
+.home-footer{padding:2.2rem var(--page-x);border-top:1px solid var(--border);font-size:.78rem;color:var(--muted);text-align:center;position:relative;z-index:1}
+
+@media (prefers-reduced-motion: reduce){
+  .orb,.home-cta-lg.btn-primary::after{animation:none;transition:none}
+  .home-card{transform:none!important}
+}
+
+/* ── Generator page frame ───────────────────────────────────────────────── */
+.gen-wrap{
+  padding-block:clamp(1.4rem,3vw,2.4rem) 5rem;
+  display:grid;grid-template-columns:240px minmax(0,1fr);gap:clamp(1.6rem,4vw,3rem);
+  align-items:start;
+}
+.gen-sidebar{position:sticky;top:calc(66px + 1.4rem)}
+.gen-sidebar-title{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted2);padding:0 .7rem .55rem}
+.gen-sidebar-nav{position:relative;display:flex;flex-direction:column;gap:3px}
+
+/* The gliding highlight behind the active report. */
+.gen-sidebar-pill{
+  position:absolute;left:0;right:0;top:0;border-radius:12px;z-index:0;pointer-events:none;
+  box-shadow:0 4px 14px rgba(15,26,58,.06),inset 0 0 0 1px rgba(15,26,58,.04);
+  transition:transform .4s var(--ease-out),height .4s var(--ease-out),background .3s ease;
+  will-change:transform,height;
+}
+.gen-sidebar-link{
+  position:relative;z-index:1;
+  display:flex;align-items:center;gap:11px;padding:.72rem .85rem;border-radius:12px;
+  text-decoration:none;font-size:.9rem;font-weight:600;color:var(--muted);letter-spacing:-.01em;
+  transition:color .2s ease,padding .28s var(--ease-out);
+  opacity:0;transform:translateX(-9px);
+  animation:gs-in .42s var(--ease-out) forwards;animation-delay:calc(var(--gs-i,0) * 48ms + 90ms);
+}
+.gen-sidebar-link:hover:not(.active){color:var(--text)}
+.gen-sidebar-link.active{color:var(--gs-accent,var(--acc));font-weight:800;font-size:.95rem;padding-left:1.05rem}
+.gen-sidebar-link.active::before{
+  content:'';position:absolute;left:.35rem;top:26%;bottom:26%;width:3px;border-radius:2px;
+  background:var(--gs-accent,var(--acc));
+}
+.gen-sidebar-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;opacity:.45;transition:transform .25s var(--ease-out),opacity .25s}
+.gen-sidebar-link.active .gen-sidebar-dot{opacity:1;transform:scale(1.4)}
+.gen-sidebar-label{flex:1;min-width:0}
+.gen-sidebar-badge{font-size:.62rem;font-weight:800;color:var(--muted2);font-variant-numeric:tabular-nums lining-nums}
+.gen-sidebar-link.active .gen-sidebar-badge{color:var(--gs-accent,var(--acc))}
+@keyframes gs-in{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){
+  .gen-sidebar-link{animation:none;opacity:1;transform:none}
+  .gen-sidebar-pill{transition:none}
+}
+
+.gen-main{max-width:var(--gen-main-max)}
+.gen-head{margin-bottom:1.6rem}
+.gen-head-eyebrow{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em}
+.gen-head-title{margin-top:.4rem;font-size:clamp(1.7rem,3.2vw,2.3rem);font-weight:800;letter-spacing:-.03em;color:var(--text)}
+.gen-head-desc{margin-top:.55rem;max-width:40rem;font-size:.92rem;line-height:1.6;color:var(--muted)}
+
+/* ============================================================================
+   UPLOAD FORM RESTYLE — applies to every generator page. Overrides a handful
+   of index.css rules to turn the long grey stack of dropzones into a set of
+   compact, colour-accented cards with a sticky Generate bar.
+   ========================================================================= */
+
+/* Client picker card — same left-accent card language as the source blocks. */
+.client-bar{border-radius:14px;border-left:3px solid var(--acc);margin-bottom:1.1rem}
+
+/* How-to: quiet, collapsed reference strip instead of a big open panel. */
+.howto{margin-bottom:1.2rem;border-radius:12px;box-shadow:none;background:var(--surface)}
+.howto-header{background:var(--surface);padding:.7rem 1rem;border-bottom:1px solid transparent}
+.howto.open .howto-header{border-bottom-color:var(--border)}
+.howto-title{font-size:.78rem}
+.howto-title::before{background:var(--acc)}
+
+/* Step rail sits in its own soft card so "what's next" reads as a panel. */
+.step-rail{
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  box-shadow:var(--shadow-sm);padding:1.1rem 1.3rem;margin-bottom:1.5rem;
+}
+
+/* Each data source is a card, not a label + hairline over bare dropzones. */
+.source-block{
+  background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--acc);
+  border-radius:14px;box-shadow:var(--shadow-sm);
+  padding:.85rem 1.05rem .95rem;margin-bottom:.7rem;
+  transition:border-color .18s,box-shadow .18s;
+}
+.source-block:hover{box-shadow:var(--shadow)}
+.panel .source-block .source-label.shopee-label{color:var(--shopee)}
+.source-block:has(.shopee-label){border-left-color:var(--shopee)}
+.source-header{margin-bottom:.55rem}
+.source-label{font-size:.72rem}
+.source-label::after{display:none}            /* drop the trailing hairline */
+.source-block .sec-badge{background:var(--s2);border-color:var(--border)}
+
+/* Dropzones: one compact row (icon · label/hint · rowcount). A fraction of
+   the old stacked card's height; drag-drop + click still cover the whole row. */
+.dz{
+  flex-direction:row;align-items:center;justify-content:flex-start;text-align:left;
+  min-height:0;padding:.62rem .85rem;gap:.7rem;border-radius:12px;border-width:1.5px;
+  border-color:color-mix(in srgb,var(--acc) 34%,var(--border));
+  background:color-mix(in srgb,var(--acc) 5%,var(--surface));
+}
+.dz .dz-icon{font-size:1rem;flex-shrink:0;width:1.5rem;height:1.5rem;display:flex;align-items:center;justify-content:center;border-radius:7px;background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--acc)}
+.dz-main{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.dz .dz-tag{font-size:.74rem;font-weight:700;color:var(--text);text-transform:none;letter-spacing:0}
+.dz-hint{font-size:.66rem;color:var(--muted);font-weight:500}
+.dz .dz-file{margin:0;padding:0;border:0;background:none;font-size:.66rem;font-weight:600;color:var(--acc);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dz .dz-rows{flex-shrink:0;font-size:.62rem;color:var(--muted);font-weight:700;background:var(--s2);border-radius:6px;padding:.15rem .45rem}
+.dz:hover,.dz.drag{border-color:var(--acc);background:var(--acc-100)}
+.dz.loaded{border-style:solid;border-color:color-mix(in srgb,var(--acc) 55%,var(--border));background:color-mix(in srgb,var(--acc) 8%,var(--surface))}
+.dz.loaded .dz-icon{background:var(--acc);color:#fff;font-weight:800}
+/* A lone row (single-file blocks like Meta / CPAS) shouldn't span the whole card. */
+.source-block > .dz{max-width:460px}
+.dz.shopee-dz{border-color:color-mix(in srgb,var(--shopee) 34%,var(--border));background:color-mix(in srgb,var(--shopee) 5%,var(--surface))}
+.dz.shopee-dz .dz-icon{background:color-mix(in srgb,var(--shopee) 13%,transparent);color:var(--shopee)}
+.dz.shopee-dz .dz-file{color:var(--shopee)}
+.dz.shopee-dz:hover,.dz.shopee-dz.drag{border-color:var(--shopee);background:var(--shopee-100)}
+.dz.shopee-dz.loaded{border-color:color-mix(in srgb,var(--shopee) 55%,var(--border));background:color-mix(in srgb,var(--shopee) 8%,var(--surface))}
+.dz.shopee-dz.loaded .dz-icon{background:var(--shopee);color:#fff}
+
+/* Two-up file rows sit in a tidy responsive grid. */
+.dz-grid-4,.dz-grid{gap:.6rem}
+@media(max-width:640px){.dz-grid,.dz-grid-4{grid-template-columns:1fr}}
+
+/* "Data tambahan (opsional)" — the 7 optional Shopee upload cards fold away. */
+.opt-group{
+  border:1.5px solid var(--border);border-left:3px solid var(--shopee-300);border-radius:14px;
+  background:var(--surface);box-shadow:var(--shadow-sm);margin-bottom:.7rem;overflow:hidden;
+}
+.opt-group[open]{border-left-color:var(--shopee)}
+.opt-group-head{
+  display:grid;grid-template-columns:1fr auto;gap:.1rem .8rem;align-items:center;
+  padding:.85rem 1.05rem;cursor:pointer;list-style:none;user-select:none;
+}
+.opt-group-head::-webkit-details-marker{display:none}
+.opt-group-title{font-size:.82rem;font-weight:800;color:var(--shopee);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.opt-group-tag{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--s2);border-radius:5px;padding:.1rem .4rem}
+.opt-group-count{font-size:.62rem;font-weight:800;color:var(--shopee);background:var(--shopee-100);border-radius:5px;padding:.1rem .45rem}
+.opt-group-sub{grid-column:1;font-size:.7rem;color:var(--muted);font-weight:500;line-height:1.45;margin-top:.15rem}
+.opt-group-chevron{grid-column:2;grid-row:1/span 2;align-self:center;color:var(--muted2);font-size:.8rem;transition:transform .2s var(--ease-out)}
+.opt-group[open] .opt-group-chevron{transform:rotate(180deg)}
+.opt-group-body{padding:.2rem 1.05rem 1rem;border-top:1px solid var(--border)}
+.opt-group-body .source-block{margin-bottom:.7rem}
+.opt-group-body .source-block:last-child{margin-bottom:0}
+
+/* Sticky Generate bar — the page's primary action is always one reach away
+   and visually can't be missed. */
+#cta{
+  position:sticky;bottom:14px;z-index:30;margin-top:1.4rem !important;
+  background:rgba(255,255,255,.82);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border:1px solid var(--border);border-radius:16px;
+  box-shadow:0 8px 30px rgba(15,26,58,.14);
+  padding:.85rem 1rem;
+}
+#cta .action-row{align-items:center}
+#cta .btn-primary{font-size:1rem;padding:.85rem 2rem;border-radius:11px}
+#cta .btn-ghost{padding:.75rem 1.2rem}
+
+/* ============================================================================
+   SHOPEE REPORT — new sections: channel contribution chart + symptom analysis.
+   ========================================================================= */
+
+/* ── Kontribusi Antar Channel ───────────────────────────────────────────── */
+.chan-verdict{
+  background:var(--shopee-100);border:1px solid var(--shopee-300);border-left:3px solid var(--shopee);
+  border-radius:11px;padding:.8rem 1rem;font-size:.86rem;line-height:1.5;color:var(--text);margin-bottom:1rem;
+}
+.chan-legend{display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:.9rem}
+.chan-legend-item{display:flex;align-items:center;gap:.4rem;font-size:.76rem;color:var(--muted);font-weight:600}
+.chan-legend-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+.chan-bar-row{margin-bottom:.9rem}
+.chan-bar-label{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.35rem}
+.chan-bar{display:flex;height:32px;border-radius:9px;overflow:hidden;border:1px solid var(--border);background:var(--s2)}
+.chan-seg{display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:#fff;
+  font-variant-numeric:tabular-nums lining-nums;transition:width .4s var(--ease-out);min-width:0}
+.chan-table th{white-space:nowrap}
+.chan-eff{display:inline-block;font-size:.7rem;font-weight:800;padding:.15rem .5rem;border-radius:6px;white-space:nowrap;font-variant-numeric:tabular-nums lining-nums}
+.chan-eff-good{background:var(--good-100);color:var(--good)}
+.chan-eff-bad{background:var(--bad-100);color:var(--bad)}
+.chan-eff-neutral{background:var(--s2);color:var(--muted)}
+
+/* ── Symptom Analysis: summary callout ──────────────────────────────────── */
+.sympt-summary{
+  border-radius:12px;padding:1rem 1.15rem;margin-bottom:1.3rem;
+  background:var(--s2);border:1px solid var(--border);border-left:3px solid var(--muted2);
+}
+.sympt-summary-up{border-left-color:var(--good);background:var(--good-100)}
+.sympt-summary-down{border-left-color:var(--bad);background:var(--bad-100)}
+.sympt-summary-headline{font-size:.95rem;font-weight:800;color:var(--text);margin-bottom:.7rem;line-height:1.4}
+.sympt-summary-points{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+.sympt-summary-points li{position:relative;padding-left:1.15rem;font-size:.83rem;line-height:1.55;color:var(--text)}
+.sympt-summary-points li::before{content:'→';position:absolute;left:0;top:0;color:var(--shopee);font-weight:800}
+.sympt-summary-verdict{margin-top:.85rem;padding-top:.75rem;border-top:1px dashed var(--border);font-size:.84rem;font-weight:650;line-height:1.5;color:var(--text)}
+
+/* ── Symptom Analysis: nested funnel tree ───────────────────────────────── */
+/* A real recursive <ul>/<li> tree. Each subtree (.st-children) draws ONE
+   continuous vertical rail with a solid elbow into every child node; nodes +
+   rails animate in with a downward stagger keyed off the --i counter. */
+.symptom-tree{--st-line:#e88a6b;--st-node-h:44px}
+.symptom-tree-head{
+  display:flex;justify-content:space-between;font-size:.62rem;font-weight:800;text-transform:uppercase;
+  letter-spacing:.07em;color:var(--muted2);padding:0 .2rem .6rem;
+}
+.symptom-tree ul{list-style:none}
+.symptom-tree .st-root-list{margin:0;padding:0}
+.symptom-tree .st-children{position:relative;margin:0 0 0 22px;padding:0 0 0 24px}
+.st-children::before{                       /* the level's vertical rail */
+  content:'';position:absolute;left:2px;top:0;bottom:calc(var(--st-node-h) - 22px + .34rem);
+  width:2.5px;border-radius:2px;background:var(--st-line);
+  transform-origin:top;animation:st-rail .5s var(--ease-out) both;
+}
+.st-item{position:relative}
+.st-item > .st-node::before{                 /* solid elbow rail → node */
+  content:'';position:absolute;left:-24px;top:22px;width:24px;height:2.5px;border-radius:2px;
+  background:var(--st-line);transform-origin:left;
+  animation:st-elbow .32s var(--ease-out) both;animation-delay:calc(var(--i,0) * 40ms + 150ms);
+}
+
+.st-node{
+  position:relative;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;
+  min-height:var(--st-node-h);padding:.55rem .9rem;margin:.34rem 0;border-radius:11px;
+  background:var(--surface);border:1px solid var(--border);
+  opacity:0;transform:translateX(-10px);
+  animation:st-node-in .5s var(--ease-out) forwards;animation-delay:calc(var(--i,0) * 40ms + 100ms);
+}
+.st-node.st-root{
+  background:linear-gradient(90deg,var(--shopee-100),var(--surface));
+  border-color:var(--shopee-300);
+}
+.st-label{flex:1;min-width:130px;font-size:.84rem;font-weight:650;color:var(--text)}
+.st-node.st-root .st-label{font-weight:800}
+.st-vals{font-size:.72rem;color:var(--muted);font-weight:600}
+.st-arrow{color:var(--muted2)}
+
+@keyframes st-node-in{to{opacity:1;transform:none}}
+@keyframes st-rail{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes st-elbow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media (prefers-reduced-motion: reduce){
+  .st-node{opacity:1;transform:none;animation:none}
+  .st-children::before,.st-item > .st-node::before{animation:none}
+}
+@media(max-width:560px){
+  .st-children{margin-left:12px;padding-left:16px}
+  .st-item > .st-node::before{left:-16px;width:16px}
+  .st-vals{width:100%;order:3}
+}
+
+/* ============================================================================
+   SHOPEE REPORT — paged results. The ~14 sections are split into 4 tabbed
+   pages instead of one long scroll; only the active page renders on screen,
+   but a PDF export unhides every page (see exportImage.ts / pdf-export-mode).
+   ========================================================================= */
+/* Auto-scroll target after Generate — clear the sticky site header + a little air. */
+[id^="report-meta"],[id^="report-shopee"],[id^="report-tiktok"]{scroll-margin-top:84px}
+
+/* Floating, sticky, glassy segmented control. A white "thumb" (.report-tab-pill)
+   glides between tabs; the bar itself sits just under the site header and lifts
+   on a stronger shadow once it's stuck there. */
+.report-tabs{
+  --rt-accent:var(--shopee);
+  position:sticky;top:calc(var(--nav-h) + 10px);z-index:25;
+  display:inline-flex;max-width:100%;gap:2px;padding:5px;margin:0 0 1.7rem;
+  border-radius:15px;border:1px solid var(--border);
+  background:rgba(240,242,248,.72);
+  -webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);
+  box-shadow:0 4px 18px rgba(15,26,58,.08);
+  overflow-x:auto;scrollbar-width:none;
+  animation:rt-bar-in .5s var(--ease-out) both;
+  transition:box-shadow .28s ease,background .28s ease;
+}
+.report-tabs::-webkit-scrollbar{display:none}
+.report-tabs.is-stuck{box-shadow:0 10px 34px rgba(15,26,58,.17);background:rgba(255,255,255,.86)}
+.report-tab-pill{
+  position:absolute;top:5px;bottom:5px;left:0;border-radius:11px;
+  background:var(--surface);box-shadow:0 2px 8px rgba(15,26,58,.13),0 0 0 1px var(--border);
+  transition:transform .42s var(--ease-out),width .42s var(--ease-out);
+  will-change:transform,width;pointer-events:none;
+}
+.report-tab{
+  position:relative;z-index:1;flex:0 0 auto;
+  font:inherit;font-size:.8rem;font-weight:700;letter-spacing:-.01em;
+  display:inline-flex;align-items:center;gap:.5rem;white-space:nowrap;
+  padding:.5rem .95rem;border:0;border-radius:11px;background:transparent;color:var(--muted);cursor:pointer;
+  transition:color .2s ease;
+  animation:rt-tab-in .4s var(--ease-out) both;animation-delay:calc(var(--rt-i,0) * 55ms + 90ms);
+}
+.report-tab:hover{color:var(--text)}
+.report-tab.active{color:var(--rt-accent)}
+.report-tab-dot{width:6px;height:6px;border-radius:50%;background:var(--muted2);flex-shrink:0;transition:background .2s ease,transform .2s ease,box-shadow .2s ease}
+.report-tab.active .report-tab-dot{background:var(--rt-accent);transform:scale(1.3)}
+
+.report-tab-panel{display:none}
+.report-tab-panel.active{display:block;animation:report-tab-in .45s var(--ease-out)}
+@keyframes report-tab-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes rt-bar-in{from{opacity:0;transform:translateY(-14px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes rt-tab-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){
+  .report-tab-panel.active,.report-tabs,.report-tab{animation:none}
+  .report-tab-pill{transition:none}
+}
+@media print{.report-tabs{display:none!important}}
+.pdf-export-mode .report-tabs{display:none!important}
+.pdf-export-mode .report-tab-panel{display:block!important;animation:none!important}
+
+/* ── Fundamental Analysis — two draggable metric groups ─────────────────── */
+.fg-wrap{display:flex;flex-direction:column;gap:1rem}
+.fg-hint{padding-top:.1rem}
+/* Palettes are plain tokens (no color-mix) so html2canvas can parse the
+   computed styles when a section is exported to PNG/PDF. */
+.fg-group{
+  --fg-accent:var(--acc);--fg-tint:var(--acc-100);--fg-line:var(--acc-300);
+  border:1.5px solid var(--border);border-left:3px solid var(--fg-accent);border-radius:12px;
+  padding:.15rem .35rem .35rem;background:var(--surface);
+  transition:box-shadow .16s,border-color .16s;
+}
+.fg-group[data-grp="client"]{--fg-accent:var(--sum);--fg-tint:var(--sum-100);--fg-line:var(--sum-300)}
+.fg-group.fg-drop{border-color:var(--fg-accent);box-shadow:0 0 0 3px var(--fg-line)}
+.fg-group-head{display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;padding:.55rem .7rem .55rem}
+.fg-group-title{font-size:.82rem;font-weight:800;color:var(--fg-accent);letter-spacing:-.01em}
+.fg-group-sub{font-size:.68rem;color:var(--muted);font-weight:500}
+.fg-group-count{margin-left:auto;font-size:.64rem;font-weight:800;color:var(--fg-accent);background:var(--fg-tint);border-radius:6px;padding:.12rem .5rem;font-variant-numeric:tabular-nums lining-nums}
+.fg-scroll{overflow-x:auto}
+.fg-table{width:100%;border-collapse:collapse}
+.fg-table thead th{padding:.35rem .8rem;font-size:.62rem}
+.fg-table td{padding:.42rem .8rem}
+.fg-table th:first-child,.fg-table td:first-child{width:auto;white-space:nowrap}
+.fg-table th:not(:first-child),.fg-table td:not(:first-child){white-space:nowrap}
+.fg-row{cursor:grab;transition:background .16s}
+.fg-row:hover{background:var(--fg-tint)}
+.fg-row:hover .fg-move{opacity:.75}
+.fg-row.fg-dragging{opacity:.35}
+.fg-row.fg-moved{animation:fg-flash .8s var(--ease-out)}
+@keyframes fg-flash{0%{background:var(--fg-line)}100%{background:transparent}}
+.fg-row-label{display:inline-flex;align-items:center;gap:.45rem;font-weight:650}
+.fg-handle{color:var(--muted2);font-size:.75em;letter-spacing:-2px;cursor:grab}
+.fg-move{
+  appearance:none;border:0;background:var(--fg-tint);
+  color:var(--fg-accent);font-size:.72rem;line-height:1;padding:.15rem .35rem;border-radius:6px;
+  cursor:pointer;opacity:0;transition:opacity .15s,background .15s;
+}
+.fg-move:hover{opacity:1;background:var(--fg-line)}
+.fg-move:focus-visible{opacity:1}
+.fg-empty{padding:.9rem .7rem;text-align:center;color:var(--muted2);font-size:.76rem;font-style:italic}
+@media(hover:none){.fg-move{opacity:.7}}
+
+/* ============================================================================
+   RESULT TABLE POLISH — a light colour/contrast pass over the shared table
+   skins (.kpi-table / .demo-table) used by every report, plus a soft
+   fade-up as each section card mounts.
+   ========================================================================= */
+.sec-block{animation:sec-in .45s var(--ease-out) both}
+.report-tab-panel .sec-block,
+.pdf-export-mode .sec-block{animation:none}
+@keyframes sec-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media print{.sec-block{animation:none!important}}
+@media (prefers-reduced-motion: reduce){.sec-block{animation:none}}
+
+/* Heading: gentle vertical wash instead of a flat grey band.
+   All values below are plain tokens/hex — no color-mix() — because
+   html2canvas (PNG/PDF export) can't parse a color-mix() computed value. */
+.sec-heading{background:linear-gradient(180deg,var(--s2),#f4f6fb)}
+/* Table headers: firmer, with an accent underline that follows the section. */
+.kpi-table thead th,.demo-table thead th{border-bottom-width:2px}
+.sec-block .kpi-table thead th,.sec-block .demo-table thead th{border-bottom-color:var(--acc-300)}
+.shopee-heading ~ * .kpi-table thead th,.shopee-heading ~ * .demo-table thead th{border-bottom-color:var(--shopee-300)}
+/* Zebra striping — subtle, neutral so it works under any section accent.
+   Skip group-divider rows (Business/Summary) which own their own background. */
+.kpi-table tbody tr:nth-child(even):not(.group-divider) td,.demo-table tbody tr:nth-child(even) td{background:#f6f8fc}
+.kpi-table tbody tr:hover td,.demo-table tbody tr:hover td{background:var(--acc-100)}
+.shopee-heading ~ * .kpi-table tbody tr:hover td,.shopee-heading ~ * .demo-table tbody tr:hover td{background:var(--shopee-100)}
+/* First column (the metric name) reads as a label, not body text. */
+.kpi-table td:first-child{color:var(--text)}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media(max-width:920px){
+  .gen-wrap{grid-template-columns:1fr;padding-bottom:4rem}
+  .gen-sidebar{
+    position:static;display:flex;gap:.4rem;overflow-x:auto;
+    padding-bottom:.4rem;scrollbar-width:thin;
+  }
+  .gen-sidebar-title{display:none}
+  .gen-sidebar-nav{flex-direction:row;gap:.4rem}
+  .gen-sidebar-link{flex:0 0 auto;border:1px solid var(--border);font-size:.82rem;padding:.5rem .8rem}
+  .gen-sidebar-link.active{font-size:.82rem;padding:.5rem .8rem .5rem 1rem;background:var(--gs-tint,var(--acc-100));border-color:var(--gs-accent,var(--acc))}
+  .gen-sidebar-link.active::before{left:.3rem;top:22%;bottom:22%}
+  .gen-sidebar-badge{display:none}
+  .gen-sidebar-pill{display:none}
+}
+@media(max-width:620px){
+  .site-brand-name{display:none}
+  .site-header-inner{grid-template-columns:auto 1fr;gap:10px}
+  .site-nav{justify-self:end;gap:2px}
+  .site-nav-link{font-size:.9rem;padding:.4rem .6rem}
+  .site-header-spacer{display:none}
+  .home-cta-row .btn{flex:1 1 auto;justify-content:center}
+}

@@ -38,12 +38,14 @@ function getReportBlocks(rootEl: HTMLElement): HTMLElement[] {
   const blocks: HTMLElement[] = [];
   const top = rootEl.querySelector(':scope > .report-top');
   if (top) blocks.push(top as HTMLElement);
-  [...body.children].forEach((child) => {
-    // .period-warning (Fase 1) is captured alongside .sec-block so the
-    // "periods aren't the same length" warning survives into the export —
-    // the whole point of the warning is to travel with a shared report.
-    if (child.classList.contains('sec-block') || child.classList.contains('period-warning')) blocks.push(child as HTMLElement);
-  });
+  // .sec-block / .period-warning cards, whether they sit directly under the
+  // report body (Meta / TikTok) or inside a .report-tab-panel wrapper (the
+  // Shopee report is paged — every page is force-shown during pdf-export-mode).
+  // .period-warning (Fase 1) is captured alongside .sec-block so the "periods
+  // aren't the same length" warning survives into the export.
+  body
+    .querySelectorAll<HTMLElement>(':scope > .sec-block, :scope > .period-warning, :scope > .report-tab-panel > .sec-block, :scope > .report-tab-panel > .period-warning')
+    .forEach((el) => blocks.push(el));
   return blocks;
 }
 
