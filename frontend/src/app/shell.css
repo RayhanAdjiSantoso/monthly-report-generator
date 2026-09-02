@@ -193,9 +193,17 @@
 }
 
 /* ── Generator page frame ───────────────────────────────────────────────── */
+/* Wider than the marketing pages on purpose — the reports/charts want room.
+   Overrides .bleed's narrower cap + trims the side padding so the sidebar
+   sits close to the viewport edge and the content fills the rest. */
+.gen-wrap.bleed,
+.site-header.wide-frame .site-header-inner.bleed{
+  max-width:min(1840px,calc(100vw - 2rem));
+  padding-inline:clamp(14px,2.4vw,40px);
+}
 .gen-wrap{
   padding-block:clamp(1.4rem,3vw,2.4rem) 5rem;
-  display:grid;grid-template-columns:240px minmax(0,1fr);gap:clamp(1.6rem,4vw,3rem);
+  display:grid;grid-template-columns:236px minmax(0,1fr);gap:clamp(1.3rem,2.6vw,2.4rem);
   align-items:start;
 }
 .gen-sidebar{position:sticky;top:calc(66px + 1.4rem)}
@@ -234,7 +242,7 @@
   .gen-sidebar-pill{transition:none}
 }
 
-.gen-main{max-width:var(--gen-main-max)}
+.gen-main{max-width:none;min-width:0}
 .gen-head{margin-bottom:1.6rem}
 .gen-head-eyebrow{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em}
 .gen-head-title{margin-top:.4rem;font-size:clamp(1.7rem,3.2vw,2.3rem);font-weight:800;letter-spacing:-.03em;color:var(--text)}

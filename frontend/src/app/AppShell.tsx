@@ -12,6 +12,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const path = location.pathname;
   const onGenerate = path.startsWith('/generate') && path !== '/generate/reports';
   const onReports = path === '/generate/reports';
+  // Generator pages use a wider content frame — align the header to it.
+  const wideFrame = path.startsWith('/generate');
   // On the home page the header rides transparent over the hero until scroll.
   const transparentTop = path === '/' && !scrolled;
 
@@ -28,7 +30,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <header className={`site-header${scrolled ? ' scrolled' : ''}${transparentTop ? ' transparent-top' : ''}`}>
+      <header className={`site-header${scrolled ? ' scrolled' : ''}${transparentTop ? ' transparent-top' : ''}${wideFrame ? ' wide-frame' : ''}`}>
         <div className="site-header-inner bleed">
           <Link to="/" className="site-brand">
             <img src="/mil-logo.png" alt="MIL Digital" className="site-brand-logo" width={40} height={40} />
