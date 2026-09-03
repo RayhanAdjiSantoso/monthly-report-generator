@@ -54,6 +54,25 @@ export function GenSidebar({ badges }: { badges: Record<ReportKey, string> }) {
           );
         })}
       </motion.nav>
+
+      <motion.div
+        className="gen-sidebar-help"
+        initial={reduce ? undefined : { opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <span className="gen-sidebar-help-ico" aria-hidden>
+          <svg viewBox="0 0 22 22" width="15" height="15" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M8.6 8.4a2.4 2.4 0 1 1 3.5 2.6c-.8.5-1.1 1-1.1 1.9" />
+            <path d="M11 16h.01" />
+          </svg>
+        </span>
+        <span className="gen-sidebar-help-body">
+          <span className="gen-sidebar-help-title">Butuh bantuan?</span>
+          <span className="gen-sidebar-help-sub">Buka panel <em>Cara penggunaan</em> di halaman untuk panduan langkah demi langkah.</span>
+        </span>
+      </motion.div>
     </aside>
   );
 }

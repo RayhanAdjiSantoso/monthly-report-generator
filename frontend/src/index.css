@@ -518,13 +518,16 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
    tab it's rendered in, via --rail-accent set inline by the caller. ── */
 .stepper{--rail-accent:var(--acc);display:flex;gap:.5rem;flex-wrap:wrap}
 .stepper-item{
-  position:relative;isolation:isolate;flex:1 1 200px;
+  position:relative;flex:1 1 200px;
   display:flex;align-items:center;gap:.7rem;
-  padding:.7rem .85rem;border-radius:12px;border:1px solid transparent;
-  transition:color .2s var(--ease-out);
+  padding:.7rem .85rem;border-radius:12px;border:1.5px solid transparent;background:transparent;
+  transition:color .25s var(--ease-out),background .3s var(--ease-out),border-color .3s var(--ease-out),box-shadow .3s var(--ease-out);
 }
-/* the gliding outline that marks the current step */
-.stepper-box{position:absolute;inset:0;z-index:-1;border-radius:12px;border:2px solid var(--rail-accent);background:color-mix(in srgb,var(--rail-accent) 9%,var(--surface));box-shadow:0 4px 14px color-mix(in srgb,var(--rail-accent) 14%,transparent)}
+.stepper-current{
+  border-color:var(--rail-accent);
+  background:color-mix(in srgb,var(--rail-accent) 8%,var(--surface));
+  box-shadow:0 4px 16px color-mix(in srgb,var(--rail-accent) 15%,transparent);
+}
 .stepper-node{
   width:30px;height:30px;flex-shrink:0;border-radius:50%;
   display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;

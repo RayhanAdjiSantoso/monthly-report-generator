@@ -8,6 +8,7 @@ import { ClientPicker } from '../features/reports/ClientPicker';
 import { ReportsTab } from '../features/reports/ReportsTab';
 import { BrandSettingsPage } from '../features/brands/BrandSettingsPage';
 import { Reveal } from '../components/Reveal';
+import { HeaderIllustration } from '../components/HeaderIllustration';
 import { GenSidebar } from './GenSidebar';
 import { isReportKey, reportByKey, type ReportKey } from './reports';
 import type { BizChannelMetrics, BizMetricKey, BizPeriod, BizRow, BizState } from '../lib/business';
@@ -52,11 +53,14 @@ export function GeneratorShell(props: GeneratorShellProps) {
 
       <div className="gen-main" id="app">
         <Reveal className="gen-head" key={activeTab}>
-          <span className="gen-head-eyebrow" style={{ color: active.accent }}>
-            {active.tagline}
-          </span>
-          <h1 className="gen-head-title">{active.label}</h1>
-          <p className="gen-head-desc">{active.desc}</p>
+          <div className="gen-head-text">
+            <span className="gen-head-eyebrow" style={{ color: active.accent }}>
+              {active.tagline}
+            </span>
+            <h1 className="gen-head-title">{active.label}</h1>
+            <p className="gen-head-desc">{active.desc}</p>
+          </div>
+          <HeaderIllustration report={activeTab} accent={active.accent} />
         </Reveal>
 
         {activeTab === 'brands' ? (
