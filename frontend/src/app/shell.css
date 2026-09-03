@@ -234,41 +234,41 @@
   display:grid;grid-template-columns:236px minmax(0,1fr);gap:clamp(1.3rem,2.6vw,2.4rem);
   align-items:start;
 }
-.gen-sidebar{position:sticky;top:calc(66px + 1.4rem)}
-.gen-sidebar-title{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted2);padding:0 .7rem .55rem}
-.gen-sidebar-nav{position:relative;display:flex;flex-direction:column;gap:3px}
+.gen-sidebar{position:sticky;top:calc(66px + 1.6rem)}
+.gen-sidebar-title{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.13em;color:var(--muted2);padding:0 .55rem .7rem}
+.gen-sidebar-nav{position:relative;display:flex;flex-direction:column;gap:4px}
+.gen-sidebar-item{position:relative}
 
-/* The gliding highlight behind the active report. */
-.gen-sidebar-pill{
-  position:absolute;left:0;right:0;top:0;border-radius:12px;z-index:0;pointer-events:none;
-  box-shadow:0 4px 14px rgba(15,26,58,.06),inset 0 0 0 1px rgba(15,26,58,.04);
-  transition:transform .4s var(--ease-out),height .4s var(--ease-out),background .3s ease;
-  will-change:transform,height;
-}
 .gen-sidebar-link{
-  position:relative;z-index:1;
-  display:flex;align-items:center;gap:11px;padding:.72rem .85rem;border-radius:12px;
+  position:relative;z-index:1;isolation:isolate;
+  display:flex;align-items:center;gap:12px;padding:.62rem .7rem;border-radius:13px;
   text-decoration:none;font-size:.9rem;font-weight:600;color:var(--muted);letter-spacing:-.01em;
-  transition:color .2s ease,padding .28s var(--ease-out);
-  opacity:0;transform:translateX(-9px);
-  animation:gs-in .42s var(--ease-out) forwards;animation-delay:calc(var(--gs-i,0) * 48ms + 90ms);
+  transition:color .22s var(--ease-out);
+}
+/* The gliding highlight — a full-row soft pill, brand-tinted to the active item. */
+.gen-sidebar-pill{
+  position:absolute;inset:0;z-index:-1;border-radius:13px;
+  background:var(--gs-tint,var(--acc-100));
+  box-shadow:0 4px 16px rgba(15,26,58,.07),inset 0 0 0 1px rgba(15,26,58,.035);
 }
 .gen-sidebar-link:hover:not(.active){color:var(--text)}
-.gen-sidebar-link.active{color:var(--gs-accent,var(--acc));font-weight:800;font-size:.95rem;padding-left:1.05rem}
-.gen-sidebar-link.active::before{
-  content:'';position:absolute;left:.35rem;top:26%;bottom:26%;width:3px;border-radius:2px;
-  background:var(--gs-accent,var(--acc));
+.gen-sidebar-link:hover:not(.active) .gen-sidebar-ico{border-color:var(--gs-accent,var(--acc));color:var(--gs-accent,var(--acc))}
+.gen-sidebar-link.active{color:var(--gs-accent,var(--acc));font-weight:750}
+
+.gen-sidebar-ico{
+  width:30px;height:30px;flex-shrink:0;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface);border:1px solid var(--border);color:var(--muted2);
+  transition:background .22s var(--ease-out),color .22s var(--ease-out),border-color .22s;
 }
-.gen-sidebar-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;opacity:.45;transition:transform .25s var(--ease-out),opacity .25s}
-.gen-sidebar-link.active .gen-sidebar-dot{opacity:1;transform:scale(1.4)}
+.gen-sidebar-ico-svg{width:16px;height:16px}
+.gen-sidebar-link.active .gen-sidebar-ico{
+  background:var(--gs-accent,var(--acc));border-color:transparent;color:#fff;
+  box-shadow:0 4px 12px color-mix(in srgb,var(--gs-accent,var(--acc)) 30%,transparent);
+}
 .gen-sidebar-label{flex:1;min-width:0}
 .gen-sidebar-badge{font-size:.62rem;font-weight:800;color:var(--muted2);font-variant-numeric:tabular-nums lining-nums}
 .gen-sidebar-link.active .gen-sidebar-badge{color:var(--gs-accent,var(--acc))}
-@keyframes gs-in{to{opacity:1;transform:none}}
-@media (prefers-reduced-motion: reduce){
-  .gen-sidebar-link{animation:none;opacity:1;transform:none}
-  .gen-sidebar-pill{transition:none}
-}
 
 .gen-main{max-width:none;min-width:0}
 .gen-head{margin-bottom:1.6rem}
@@ -283,7 +283,7 @@
    ========================================================================= */
 
 /* Client picker card — same left-accent card language as the source blocks. */
-.client-bar{border-radius:14px;border-left:3px solid var(--acc);margin-bottom:1.1rem}
+.client-bar{border:1px solid var(--border);border-left-width:1px;border-radius:16px;box-shadow:var(--shadow-sm);padding:1rem 1.2rem;margin-bottom:1.1rem}
 
 /* ── SearchSelect — custom searchable dropdown (replaces the native <select>) ── */
 .ssel{position:relative;min-width:min(260px,100%)}
@@ -329,23 +329,22 @@
 .howto-title{font-size:.78rem}
 .howto-title::before{background:var(--acc)}
 
-/* Step rail sits in its own soft card so "what's next" reads as a panel. */
-.step-rail{
-  background:var(--surface);border:1px solid var(--border);border-radius:14px;
-  box-shadow:var(--shadow-sm);padding:1.1rem 1.3rem;margin-bottom:1.5rem;
+/* Stepper sits in its own soft card so "what's next" reads as a panel. */
+.stepper{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  box-shadow:var(--shadow-sm);padding:.7rem;margin-bottom:1.6rem;
 }
 
 /* Each data source is a card, not a label + hairline over bare dropzones. */
 .source-block{
-  background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--acc);
-  border-radius:14px;box-shadow:var(--shadow-sm);
-  padding:.85rem 1.05rem .95rem;margin-bottom:.7rem;
-  transition:border-color .18s,box-shadow .18s;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;box-shadow:var(--shadow-sm);
+  padding:1.05rem 1.2rem 1.15rem;margin-bottom:.85rem;
+  transition:box-shadow .2s var(--ease-out);
 }
 .source-block:hover{box-shadow:var(--shadow)}
 .panel .source-block .source-label.shopee-label{color:var(--shopee)}
-.source-block:has(.shopee-label){border-left-color:var(--shopee)}
-.source-header{margin-bottom:.55rem}
+.source-header{margin-bottom:.6rem}
 .source-label{font-size:.72rem}
 .source-label::after{display:none}            /* drop the trailing hairline */
 .source-block .sec-badge{background:var(--s2);border-color:var(--border)}
@@ -382,10 +381,10 @@
 
 /* "Data tambahan (opsional)" — the 7 optional Shopee upload cards fold away. */
 .opt-group{
-  border:1.5px solid var(--border);border-left:3px solid var(--shopee-300);border-radius:14px;
+  border:1px solid var(--border);border-radius:16px;
   background:var(--surface);box-shadow:var(--shadow-sm);margin-bottom:.7rem;overflow:hidden;
 }
-.opt-group[open]{border-left-color:var(--shopee)}
+.opt-group[open]{border-color:var(--shopee-300)}
 .opt-group-head{
   display:grid;grid-template-columns:1fr auto;gap:.1rem .8rem;align-items:center;
   padding:.85rem 1.05rem;cursor:pointer;list-style:none;user-select:none;
