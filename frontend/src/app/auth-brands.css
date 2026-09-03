@@ -15,7 +15,9 @@
 
 /* ── Login ─────────────────────────────────────────────────────────────── */
 .login-screen{
-  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;margin-top:calc(-1 * var(--nav-h));
+  padding:calc(var(--nav-h) + 2rem) 2rem 2rem;
   position:relative;overflow:hidden;background:linear-gradient(180deg,#fdfdfc 0%,#f4f7fd 60%,var(--bg) 100%);
 }
 .login-bg{position:absolute;inset:0;pointer-events:none;z-index:0}

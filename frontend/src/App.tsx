@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { useRef, useState, type ReactNode } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppShell } from './app/AppShell';
 import { HomePage } from './app/HomePage';
 import { GeneratorShell } from './app/GeneratorShell';
@@ -13,16 +13,30 @@ function defaultChannelData(): Record<string, BizChannelMetrics> {
   return Object.fromEntries(BIZ_INPUT_CHANNELS.map((c) => [c.key, emptyBizChannel()]));
 }
 
-function GeneratorApp() {
-  const [clientId, setClientId] = useState<number | null>(null);
+function Splash() {
+  return (
+    <div className="app-splash">
+      <img src="/mil-logo.png" alt="" width={44} height={44} />
+      <span className="app-splash-bar" aria-hidden />
+    </div>
+  );
+}
 
-  // ── Cross-tab shared state ──
-  // platformState feeds the Summary Overview tab (Meta/Shopee/TikTok each
-  // report their last-generated result here); the Business Overview state
-  // (channelData/offlineStores/otherChannels) is shared between the Business
-  // Overview tab's own cards and Summary Overview's Cost per Revenue card,
-  // same as the original's module-level globals. It lives here, above the
-  // router, so it survives navigating between /generate/:platform pages.
+// Guards the generator routes: an unauthenticated visitor is bounced to
+// /login (remembering where they were headed); the landing page stays public.
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <Splash />;
+  if (!user) return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
+  return <>{children}</>;
+}
+
+// Holds the cross-tab shared state and stays mounted across every route so
+// upload progress / generated reports survive navigating to the home page
+// and back.
+function AppRoutes() {
+  const [clientId, setClientId] = useState<number | null>(null);
   const [platformState, setPlatformState] = useState(emptyPlatformStateMap());
   const [omzetOld, setOmzetOld] = useState<number | null>(null);
   const [omzetCur, setOmzetCur] = useState<number | null>(null);
@@ -37,13 +51,11 @@ function GeneratorApp() {
   function invalidatePlatform(key: PlatformKey) {
     setPlatformState((prev) => (prev[key].done || prev[key].error ? { ...prev, [key]: emptyPlatformState() } : prev));
   }
-
   function handleChannelDataChange(chKey: string, metric: BizMetricKey, period: BizPeriod, v: number | null) {
     setChannelData((prev) => ({ ...prev, [chKey]: { ...prev[chKey], [metric]: { ...prev[chKey][metric], [period]: v } } }));
   }
 
   const bizState = { channelData, offlineStores, otherChannels, shopeeOmzet: { old: omzetOld, cur: omzetCur } };
-
   const doneCount = PLATFORM_CONFIG.filter((p) => platformState[p.key].done).length;
   const badges: Record<ReportKey, string> = {
     meta: platformState.meta.done ? '✓' : '—',
@@ -58,30 +70,33 @@ function GeneratorApp() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/generate" element={<Navigate to="/generate/meta" replace />} />
       <Route
         path="/generate/:platform"
         element={
-          <GeneratorShell
-            clientId={clientId}
-            setClientId={setClientId}
-            badges={badges}
-            platformState={platformState}
-            bizState={bizState}
-            setPlatformResult={setPlatformResult}
-            invalidatePlatform={invalidatePlatform}
-            omzetOld={omzetOld}
-            omzetCur={omzetCur}
-            setOmzetOld={setOmzetOld}
-            setOmzetCur={setOmzetCur}
-            channelData={channelData}
-            offlineStores={offlineStores}
-            otherChannels={otherChannels}
-            onChannelDataChange={handleChannelDataChange}
-            setOfflineStores={setOfflineStores}
-            setOtherChannels={setOtherChannels}
-            nextRowId={() => bizRowSeq.current++}
-          />
+          <RequireAuth>
+            <GeneratorShell
+              clientId={clientId}
+              setClientId={setClientId}
+              badges={badges}
+              platformState={platformState}
+              bizState={bizState}
+              setPlatformResult={setPlatformResult}
+              invalidatePlatform={invalidatePlatform}
+              omzetOld={omzetOld}
+              omzetCur={omzetCur}
+              setOmzetOld={setOmzetOld}
+              setOmzetCur={setOmzetCur}
+              channelData={channelData}
+              offlineStores={offlineStores}
+              otherChannels={otherChannels}
+              onChannelDataChange={handleChannelDataChange}
+              setOfflineStores={setOfflineStores}
+              setOtherChannels={setOtherChannels}
+              nextRowId={() => bizRowSeq.current++}
+            />
+          </RequireAuth>
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -89,31 +104,13 @@ function GeneratorApp() {
   );
 }
 
-function Gate() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="app-splash">
-        <img src="/mil-logo.png" alt="" width={44} height={44} />
-        <span className="app-splash-bar" aria-hidden />
-      </div>
-    );
-  }
-  if (!user) return <LoginPage />;
-
-  return (
-    <AppShell>
-      <GeneratorApp />
-    </AppShell>
-  );
-}
-
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Gate />
+        <AppShell>
+          <AppRoutes />
+        </AppShell>
       </AuthProvider>
     </BrowserRouter>
   );

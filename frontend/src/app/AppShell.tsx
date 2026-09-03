@@ -11,15 +11,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const location = useLocation();
   const path = location.pathname;
+  const onLogin = path === '/login';
   const onGenerate = path.startsWith('/generate') && path !== '/generate/reports';
   const onReports = path === '/generate/reports';
   // Generator pages use a wider content frame — align the header to it.
   const wideFrame = path.startsWith('/generate');
-  // On the home page the header rides transparent over the hero until scroll.
-  const transparentTop = path === '/' && !scrolled;
+  // On the home page (until scroll) and the login screen the header rides
+  // transparent over the background.
+  const transparentTop = (path === '/' && !scrolled) || onLogin;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
@@ -56,31 +58,43 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="site-nav">
-            <NavLink to="/" end className={({ isActive }) => navLinkClass(isActive)}>
-              Beranda
-            </NavLink>
-            <NavLink to="/generate/meta" className={navLinkClass(onGenerate)}>
-              Buat Laporan
-            </NavLink>
-            <NavLink to="/generate/reports" className={navLinkClass(onReports)}>
-              Riwayat
-            </NavLink>
+            {!onLogin && (
+              <>
+                <NavLink to="/" end className={({ isActive }) => navLinkClass(isActive)}>
+                  Beranda
+                </NavLink>
+                <NavLink to="/generate/meta" className={navLinkClass(onGenerate)}>
+                  Buat Laporan
+                </NavLink>
+                <NavLink to="/generate/reports" className={navLinkClass(onReports)}>
+                  Riwayat
+                </NavLink>
+              </>
+            )}
           </nav>
 
           <div className="site-user" ref={menuRef}>
-            <button type="button" className="site-user-btn" onClick={() => setMenuOpen((o) => !o)} aria-haspopup="menu" aria-expanded={menuOpen} title={user?.email ?? undefined}>
-              {initial}
-            </button>
-            {menuOpen && (
-              <div className="site-user-menu" role="menu">
-                <div className="site-user-email">{user?.email}</div>
-                <Link to="/generate/brands" className="site-user-item" role="menuitem">
-                  Pengaturan Brand
-                </Link>
-                <button type="button" className="site-user-item danger" role="menuitem" onClick={() => logout()}>
-                  Keluar
+            {loading ? null : onLogin ? null : user ? (
+              <>
+                <button type="button" className="site-user-btn" onClick={() => setMenuOpen((o) => !o)} aria-haspopup="menu" aria-expanded={menuOpen} title={user.email ?? undefined}>
+                  {initial}
                 </button>
-              </div>
+                {menuOpen && (
+                  <div className="site-user-menu" role="menu">
+                    <div className="site-user-email">{user.email}</div>
+                    <Link to="/generate/brands" className="site-user-item" role="menuitem">
+                      Pengaturan Brand
+                    </Link>
+                    <button type="button" className="site-user-item danger" role="menuitem" onClick={() => logout()}>
+                      Keluar
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <Link to="/login" className="btn btn-primary site-login-btn">
+                Login
+              </Link>
             )}
           </div>
         </div>

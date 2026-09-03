@@ -1,13 +1,23 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ParticleField } from '../components/ParticleField';
 import { useAuth } from './AuthProvider';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { user, loading, login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from || '/';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Already signed in? Skip the form.
+  useEffect(() => {
+    if (!loading && user) navigate(from, { replace: true });
+  }, [loading, user, from, navigate]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -15,6 +25,7 @@ export function LoginPage() {
     setError(null);
     try {
       await login(email.trim(), password);
+      navigate(from, { replace: true });
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
