@@ -4,6 +4,8 @@ import { AppShell } from './app/AppShell';
 import { HomePage } from './app/HomePage';
 import { GeneratorShell } from './app/GeneratorShell';
 import type { ReportKey } from './app/reports';
+import { AuthProvider, useAuth } from './auth/AuthProvider';
+import { LoginPage } from './auth/LoginPage';
 import { BIZ_INPUT_CHANNELS, bizBadgeLabel, emptyBizChannel, type BizChannelMetrics, type BizMetricKey, type BizPeriod, type BizRow } from './lib/business';
 import { PLATFORM_CONFIG, emptyPlatformState, emptyPlatformStateMap, type PlatformKey, type PlatformResultData } from './lib/summary';
 
@@ -11,7 +13,7 @@ function defaultChannelData(): Record<string, BizChannelMetrics> {
   return Object.fromEntries(BIZ_INPUT_CHANNELS.map((c) => [c.key, emptyBizChannel()]));
 }
 
-function App() {
+function GeneratorApp() {
   const [clientId, setClientId] = useState<number | null>(null);
 
   // ── Cross-tab shared state ──
@@ -50,44 +52,69 @@ function App() {
     business: bizBadgeLabel(bizState),
     summary: doneCount === PLATFORM_CONFIG.length ? '✓' : `${doneCount}/${PLATFORM_CONFIG.length}`,
     reports: '—',
+    brands: '—',
   };
 
   return (
-    <BrowserRouter>
-      <AppShell>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/generate" element={<Navigate to="/generate/meta" replace />} />
-          <Route
-            path="/generate/:platform"
-            element={
-              <GeneratorShell
-                clientId={clientId}
-                setClientId={setClientId}
-                badges={badges}
-                platformState={platformState}
-                bizState={bizState}
-                setPlatformResult={setPlatformResult}
-                invalidatePlatform={invalidatePlatform}
-                omzetOld={omzetOld}
-                omzetCur={omzetCur}
-                setOmzetOld={setOmzetOld}
-                setOmzetCur={setOmzetCur}
-                channelData={channelData}
-                offlineStores={offlineStores}
-                otherChannels={otherChannels}
-                onChannelDataChange={handleChannelDataChange}
-                setOfflineStores={setOfflineStores}
-                setOtherChannels={setOtherChannels}
-                nextRowId={() => bizRowSeq.current++}
-              />
-            }
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/generate" element={<Navigate to="/generate/meta" replace />} />
+      <Route
+        path="/generate/:platform"
+        element={
+          <GeneratorShell
+            clientId={clientId}
+            setClientId={setClientId}
+            badges={badges}
+            platformState={platformState}
+            bizState={bizState}
+            setPlatformResult={setPlatformResult}
+            invalidatePlatform={invalidatePlatform}
+            omzetOld={omzetOld}
+            omzetCur={omzetCur}
+            setOmzetOld={setOmzetOld}
+            setOmzetCur={setOmzetCur}
+            channelData={channelData}
+            offlineStores={offlineStores}
+            otherChannels={otherChannels}
+            onChannelDataChange={handleChannelDataChange}
+            setOfflineStores={setOfflineStores}
+            setOtherChannels={setOtherChannels}
+            nextRowId={() => bizRowSeq.current++}
           />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AppShell>
-    </BrowserRouter>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
-export default App;
+function Gate() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="app-splash">
+        <img src="/mil-logo.png" alt="" width={44} height={44} />
+        <span className="app-splash-bar" aria-hidden />
+      </div>
+    );
+  }
+  if (!user) return <LoginPage />;
+
+  return (
+    <AppShell>
+      <GeneratorApp />
+    </AppShell>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Gate />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}

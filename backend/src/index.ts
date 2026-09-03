@@ -1,6 +1,9 @@
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
+import { requireAuth } from './auth.js';
 import { config } from './config.js';
+import { authRouter } from './routes/auth.js';
+import { brandsRouter } from './routes/brands.js';
 import { clientsRouter } from './routes/clients.js';
 import { productMasterRouter } from './routes/productMaster.js';
 import { reportsRouter } from './routes/reports.js';
@@ -11,17 +14,23 @@ import { savedPeriodsRouter } from './routes/savedPeriods.js';
 // unchanged from the plain-Express version — nothing here is Vercel-aware.
 export const app = express();
 
-app.use(cors({ origin: config.corsOrigins }));
+// credentials:true so the session cookie is allowed on cross-origin setups
+// (a separate-origin backend). Same-origin (local vite proxy, Vercel rewrite)
+// doesn't need it, but it's harmless there.
+app.use(cors({ origin: config.corsOrigins, credentials: true }));
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
 
-app.use('/api/clients', clientsRouter);
-app.use('/api/reports', reportsRouter);
-app.use('/api/saved-periods', savedPeriodsRouter);
-app.use('/api/product-master', productMasterRouter);
+// Auth endpoints are open; everything else requires a valid session.
+app.use('/api/auth', authRouter);
+app.use('/api/clients', requireAuth, clientsRouter);
+app.use('/api/reports', requireAuth, reportsRouter);
+app.use('/api/saved-periods', requireAuth, savedPeriodsRouter);
+app.use('/api/product-master', requireAuth, productMasterRouter);
+app.use('/api/brands', requireAuth, brandsRouter);
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

@@ -6,6 +6,7 @@ import { BusinessTab } from '../features/business/BusinessTab';
 import { SummaryTab } from '../features/summary/SummaryTab';
 import { ClientPicker } from '../features/reports/ClientPicker';
 import { ReportsTab } from '../features/reports/ReportsTab';
+import { BrandSettingsPage } from '../features/brands/BrandSettingsPage';
 import { Reveal } from '../components/Reveal';
 import { GenSidebar } from './GenSidebar';
 import { isReportKey, reportByKey, type ReportKey } from './reports';
@@ -58,6 +59,10 @@ export function GeneratorShell(props: GeneratorShellProps) {
           <p className="gen-head-desc">{active.desc}</p>
         </Reveal>
 
+        {activeTab === 'brands' ? (
+          <BrandSettingsPage />
+        ) : (
+          <>
         <ClientPicker clientId={props.clientId} onChange={props.setClientId} />
 
         <MetaTab
@@ -95,6 +100,8 @@ export function GeneratorShell(props: GeneratorShellProps) {
           nextRowId={props.nextRowId}
         />
         <SummaryTab isActive={activeTab === 'summary'} platformState={props.platformState} bizState={props.bizState} />
+          </>
+        )}
       </div>
     </div>
   );

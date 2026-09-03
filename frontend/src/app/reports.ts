@@ -2,7 +2,7 @@
 // the home-page cards, the slide-in drawer, the generator sidebar, and the
 // /generate/:platform route param validation. Keys match the old
 // PlatformTabs `TabKey` union 1:1 so nothing downstream had to change.
-export type ReportKey = 'meta' | 'shopee' | 'tiktok' | 'business' | 'summary' | 'reports';
+export type ReportKey = 'meta' | 'shopee' | 'tiktok' | 'business' | 'summary' | 'reports' | 'brands';
 
 export interface ReportNavItem {
   key: ReportKey;
@@ -75,6 +75,16 @@ export const REPORT_NAV: ReportNavItem[] = [
     accent: 'var(--muted)',
     tint: 'var(--s2)',
     mark: 'H',
+  },
+  {
+    key: 'brands',
+    label: 'Pengaturan Brand',
+    short: 'Brand',
+    tagline: 'Identitas & histori brand',
+    desc: 'Kelola identitas, deskripsi, dan catatan bulanan (winnings / cons) tiap brand — dipakai untuk memperkaya findings laporan.',
+    accent: 'var(--cyan)',
+    tint: 'var(--acc-100)',
+    mark: '✦',
   },
 ];
 

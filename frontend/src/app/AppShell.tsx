@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
 
 const navLinkClass = (active: boolean) => `site-nav-link${active ? ' active' : ''}`;
 
@@ -8,6 +9,9 @@ const navLinkClass = (active: boolean) => `site-nav-link${active ? ' active' : '
 // the three primary links centered, nothing competing on the right.
 export function AppShell({ children }: { children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const { user, logout } = useAuth();
   const location = useLocation();
   const path = location.pathname;
   const onGenerate = path.startsWith('/generate') && path !== '/generate/reports';
@@ -26,7 +30,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
+    setMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [menuOpen]);
+
+  const initial = (user?.name || user?.email || '?').charAt(0).toUpperCase();
 
   return (
     <>
@@ -51,7 +67,22 @@ export function AppShell({ children }: { children: ReactNode }) {
             </NavLink>
           </nav>
 
-          <span className="site-header-spacer" aria-hidden />
+          <div className="site-user" ref={menuRef}>
+            <button type="button" className="site-user-btn" onClick={() => setMenuOpen((o) => !o)} aria-haspopup="menu" aria-expanded={menuOpen} title={user?.email ?? undefined}>
+              {initial}
+            </button>
+            {menuOpen && (
+              <div className="site-user-menu" role="menu">
+                <div className="site-user-email">{user?.email}</div>
+                <Link to="/generate/brands" className="site-user-item" role="menuitem">
+                  Pengaturan Brand
+                </Link>
+                <button type="button" className="site-user-item danger" role="menuitem" onClick={() => logout()}>
+                  Keluar
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
