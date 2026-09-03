@@ -7,6 +7,7 @@ import {
   type FunnelTreeRow,
   type FunnelValueRow,
 } from '../../lib/shopeeFunnel';
+import { buildSymptomSummary, type SymptomSummary } from '../../lib/shopeeFunnelSummary';
 import {
   buildPareto,
   buildProductRankings,
@@ -45,9 +46,26 @@ export interface BuildShopeeFunnelReportInput {
   productPerfCur: SheetRow[] | null;
 }
 
+// One ad channel's current-period contribution — feeds the "Kontribusi Antar
+// Channel" chart. `roas` is carried for reference only; the chart's
+// effectiveness signal is the efficiency index (GMV share ÷ spend share),
+// which is robust to a channel with tiny spend catching one big order.
+export interface ChannelMixEntry {
+  key: 'produk' | 'toko' | 'live';
+  label: string;
+  color: string;
+  spend: number;
+  gmv: number;
+  roas: number;
+}
+
 export interface ShopeeFunnelReport {
   values: FunnelValueRow[];
   tree: FunnelTreeRow[];
+  // Plain-language read of the funnel movement (headline + points + verdict).
+  symptom: SymptomSummary;
+  // Current-period spend/GMV per ad channel (only channels with data).
+  channelMix: ChannelMixEntry[];
   // Iklan Live GMV, shown as a footnote outside the funnel tree (Live has no
   // impression/click columns so it can't join the tree, but its revenue
   // shouldn't vanish from view).
@@ -65,6 +83,10 @@ function sumLiveGmv(rows: SheetRow[]): number {
   return rows.reduce((s, r) => s + parseShopeeNum(r[col]), 0);
 }
 
+function mixEntry(key: ChannelMixEntry['key'], label: string, color: string, spend: number, gmv: number): ChannelMixEntry {
+  return { key, label, color, spend, gmv, roas: spend > 0 ? gmv / spend : 0 };
+}
+
 export function buildShopeeFunnelReport(input: BuildShopeeFunnelReportInput): ShopeeFunnelReport {
   const sumsOld = addFunnelChannelSums(sumFunnelChannel(input.produkOld), sumFunnelChannel(input.tokoOld));
   const sumsCur = addFunnelChannelSums(sumFunnelChannel(input.produkCur), sumFunnelChannel(input.tokoCur));
@@ -77,9 +99,24 @@ export function buildShopeeFunnelReport(input: BuildShopeeFunnelReportInput): Sh
   const perfOld = input.productPerfOld ? parseProductPerfRows(input.productPerfOld) : [];
   const perfCur = input.productPerfCur ? parseProductPerfRows(input.productPerfCur) : [];
 
+  // Current-period channel mix — Iklan Produk always present; Toko / Live only
+  // when the user uploaded that channel. Live GMV uses the same "Omzet
+  // Penjualan" column sumLiveGmv reads.
+  const produkCurSums = sumFunnelChannel(input.produkCur);
+  const channelMix: ChannelMixEntry[] = [mixEntry('produk', 'Iklan Produk', '#ee4d2d', produkCurSums.spend, produkCurSums.gmv)];
+  if (input.tokoOld.length || input.tokoCur.length) {
+    const t = sumFunnelChannel(input.tokoCur);
+    channelMix.push(mixEntry('toko', 'Iklan Toko', '#0d9488', t.spend, t.gmv));
+  }
+  if (input.liveOld.length || input.liveCur.length) {
+    channelMix.push(mixEntry('live', 'Iklan Live', '#7c3aed', sumFunnelChannel(input.liveCur).spend, liveCurGmv));
+  }
+
   return {
     values: buildFunnelValues(mOld, mCur),
     tree: buildFunnelTree(mOld, mCur),
+    symptom: buildSymptomSummary(mOld, mCur),
+    channelMix: channelMix.filter((e) => e.spend > 0 || e.gmv > 0),
     liveGmv: { old: liveOldGmv, cur: liveCurGmv, hasData: liveOldGmv > 0 || liveCurGmv > 0 },
     pareto: buildPareto(perfCur),
     traffic: buildProductRankings(perfOld, perfCur, TRAFFIC_METRIC_DEFS),

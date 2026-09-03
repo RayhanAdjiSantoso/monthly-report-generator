@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MIL Digital">
+  <defs>
+    <linearGradient id="milg" x1="64" y1="460" x2="452" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A5FAE"/>
+      <stop offset="1" stop-color="#1EA0DD"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#milg)"/>
+  <g fill="#ffffff">
+    <rect x="120" y="300" width="52" height="92" rx="20"/>
+    <rect x="196" y="244" width="52" height="148" rx="20"/>
+    <rect x="272" y="188" width="52" height="204" rx="20"/>
+    <rect x="348" y="132" width="52" height="260" rx="20"/>
+    <circle cx="374" cy="96" r="30"/>
+  </g>
+</svg>

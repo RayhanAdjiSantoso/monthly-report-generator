@@ -1,10 +1,12 @@
 import { KpiTable } from '../../components/KpiTable';
 import { PeriodWarningBanner } from '../../components/PeriodWarningBanner';
+import { ReportPages } from '../../components/ReportPages';
 import { SectionDownloadButton } from '../../components/SectionDownloadButton';
 import type { DailyTrendMetricSelection } from '../../lib/shopeeDeepDiveInsights';
 import type { MetricSelection } from '../../lib/shopeeDeepDiveItemPivot';
 import { ChannelPivotSection, DailyTrendSection, ItemPivotSection, TingkatkanDenganIklanTable, UnadvertisedProductsTable, UncategorizedPanel } from './DeepDiveSections';
-import { FundamentalAnalysisSection, ParetoAnalysisSection, ProductRankingSection } from './AnalysisSections';
+import { FundamentalAnalysisSection, ParetoAnalysisSection, ProductRankingSection, SymptomAnalysisSection } from './AnalysisSections';
+import { ChannelContributionSection } from './ChannelContributionSection';
 import type { ShopeeDeepDiveReport } from './shopeeDeepDiveReport';
 import type { ShopeeFunnelReport } from './shopeeFunnelReport';
 import type { ShopeeReport } from './shopeeReport';
@@ -46,71 +48,104 @@ export function ShopeeReportSections({
   onItemPivotTabChange,
   onSaveCategory,
 }: ShopeeReportSectionsProps) {
+  // ~14 cards used to be one long scroll — now split across 4 tabbed pages.
+  const pages = [
+    {
+      id: 'ringkasan',
+      label: 'Ringkasan & Channel',
+      content: (
+        <>
+          <ChannelPivotSection title="Iklan Shopee Overall" badge="Semua Channel" rows={deepDive.overall} p1={report.p1} p2={report.p2} />
+          <ChannelPivotSection title="Iklan Produk" badge="+ Iklan Produk Otomatis" rows={deepDive.produk} p1={report.p1} p2={report.p2} />
+          {hasTokoData && <ChannelPivotSection title="Iklan Toko" badge="Shop+ Ads" rows={deepDive.toko} p1={report.p1} p2={report.p2} />}
+          {hasLiveData && <ChannelPivotSection title="Iklan Live" badge="Penonton-based" rows={deepDive.live} p1={report.p1} p2={report.p2} />}
+          {funnelReport && <ChannelContributionSection mix={funnelReport.channelMix} periodLabel={report.p2} />}
+          {report.productOverviewRows && (
+            <div className="sec-block">
+              <div className="sec-heading shopee-heading">
+                Shopee Toko <span className="sec-badge">Product Overview</span>
+                <SectionDownloadButton />
+              </div>
+              <div style={{ padding: '0 1.4rem 1.4rem' }}>
+                <KpiTable rows={report.productOverviewRows} p1={report.p1} p2={report.p2} />
+              </div>
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      id: 'funnel',
+      label: 'Funnel & Diagnosa',
+      content: funnelReport ? (
+        <>
+          <FundamentalAnalysisSection values={funnelReport.values} liveGmv={funnelReport.liveGmv} p1={report.p1} p2={report.p2} />
+          <SymptomAnalysisSection tree={funnelReport.tree} summary={funnelReport.symptom} p1={report.p1} p2={report.p2} />
+        </>
+      ) : (
+        <div className="empty-note" style={{ padding: '1.4rem' }}>Funnel &amp; diagnosa butuh data Iklan Produk 2 periode.</div>
+      ),
+    },
+    {
+      id: 'produk',
+      label: 'Analisis Produk',
+      content: (
+        <>
+          {funnelReport && (
+            <>
+              <ParetoAnalysisSection rows={funnelReport.pareto} hasData={funnelReport.hasProductPerfCur} periodLabel={report.p2} />
+              <ProductRankingSection
+                title="Traffic Analysis"
+                badge="Product Performance · ranking traffic per produk"
+                rankings={funnelReport.traffic}
+                hasCur={funnelReport.hasProductPerfCur}
+                hasOld={funnelReport.hasProductPerfOld}
+                p1={report.p1}
+                p2={report.p2}
+              />
+              <ProductRankingSection
+                title="Conversion Analysis"
+                badge="Product Performance · ranking konversi per produk"
+                rankings={funnelReport.conversion}
+                hasCur={funnelReport.hasProductPerfCur}
+                hasOld={funnelReport.hasProductPerfOld}
+                p1={report.p1}
+                p2={report.p2}
+              />
+            </>
+          )}
+          <ItemPivotSection
+            produkRows={deepDive.produkPivot}
+            produkSelections={deepDive.produkSelections}
+            onProdukSelectionsChange={onProdukSelectionsChange}
+            keywordRows={deepDive.keywordPivot}
+            hasKeywordData={hasTokoKeywordData}
+            keywordSelections={deepDive.keywordSelections}
+            onKeywordSelectionsChange={onKeywordSelectionsChange}
+            customMetrics={customMetrics}
+            onAddCustomMetric={onAddCustomMetric}
+            activeTab={hasTokoKeywordData ? itemPivotTab : 'produk'}
+            onTabChange={onItemPivotTabChange}
+            p1={report.p1}
+            p2={report.p2}
+          />
+          <UncategorizedPanel names={deepDive.uncategorized} onSave={onSaveCategory} />
+          <UnadvertisedProductsTable rows={deepDive.unadvertisedProducts} hasFile={deepDive.hasProductPerformanceData} />
+          <TingkatkanDenganIklanTable rows={deepDive.tingkatkanDenganIklanRows} />
+        </>
+      ),
+    },
+    {
+      id: 'tren',
+      label: 'Tren Harian',
+      content: <DailyTrendSection rows={deepDive.dailyTrendPivot} selections={deepDive.dailyTrendSelections} onSelectionsChange={onDailyTrendSelectionsChange} p1={report.p1} p2={report.p2} />,
+    },
+  ];
+
   return (
     <>
       <PeriodWarningBanner message={report.periodWarning} />
-
-      <ChannelPivotSection title="Iklan Shopee Overall" badge="Semua Channel" rows={deepDive.overall} p1={report.p1} p2={report.p2} />
-      <ChannelPivotSection title="Iklan Produk" badge="+ Iklan Produk Otomatis" rows={deepDive.produk} p1={report.p1} p2={report.p2} />
-      {hasTokoData && <ChannelPivotSection title="Iklan Toko" badge="Shop+ Ads" rows={deepDive.toko} p1={report.p1} p2={report.p2} />}
-      {hasLiveData && <ChannelPivotSection title="Iklan Live" badge="Penonton-based" rows={deepDive.live} p1={report.p1} p2={report.p2} />}
-
-      {report.productOverviewRows && (
-        <div className="sec-block">
-          <div className="sec-heading shopee-heading">
-            Shopee Toko <span className="sec-badge">Product Overview</span>
-            <SectionDownloadButton />
-          </div>
-          <div style={{ padding: '0 1.4rem 1.4rem' }}>
-            <KpiTable rows={report.productOverviewRows} p1={report.p1} p2={report.p2} />
-          </div>
-        </div>
-      )}
-
-      {funnelReport && (
-        <>
-          <FundamentalAnalysisSection values={funnelReport.values} tree={funnelReport.tree} liveGmv={funnelReport.liveGmv} p1={report.p1} p2={report.p2} />
-          <ParetoAnalysisSection rows={funnelReport.pareto} hasData={funnelReport.hasProductPerfCur} periodLabel={report.p2} />
-          <ProductRankingSection
-            title="Traffic Analysis"
-            badge="Product Performance · ranking traffic per produk"
-            rankings={funnelReport.traffic}
-            hasCur={funnelReport.hasProductPerfCur}
-            hasOld={funnelReport.hasProductPerfOld}
-            p1={report.p1}
-            p2={report.p2}
-          />
-          <ProductRankingSection
-            title="Conversion Analysis"
-            badge="Product Performance · ranking konversi per produk"
-            rankings={funnelReport.conversion}
-            hasCur={funnelReport.hasProductPerfCur}
-            hasOld={funnelReport.hasProductPerfOld}
-            p1={report.p1}
-            p2={report.p2}
-          />
-        </>
-      )}
-
-      <ItemPivotSection
-        produkRows={deepDive.produkPivot}
-        produkSelections={deepDive.produkSelections}
-        onProdukSelectionsChange={onProdukSelectionsChange}
-        keywordRows={deepDive.keywordPivot}
-        hasKeywordData={hasTokoKeywordData}
-        keywordSelections={deepDive.keywordSelections}
-        onKeywordSelectionsChange={onKeywordSelectionsChange}
-        customMetrics={customMetrics}
-        onAddCustomMetric={onAddCustomMetric}
-        activeTab={hasTokoKeywordData ? itemPivotTab : 'produk'}
-        onTabChange={onItemPivotTabChange}
-        p1={report.p1}
-        p2={report.p2}
-      />
-      <UncategorizedPanel names={deepDive.uncategorized} onSave={onSaveCategory} />
-      <UnadvertisedProductsTable rows={deepDive.unadvertisedProducts} hasFile={deepDive.hasProductPerformanceData} />
-      <TingkatkanDenganIklanTable rows={deepDive.tingkatkanDenganIklanRows} />
-      <DailyTrendSection rows={deepDive.dailyTrendPivot} selections={deepDive.dailyTrendSelections} onSelectionsChange={onDailyTrendSelectionsChange} p1={report.p1} p2={report.p2} />
+      <ReportPages pages={pages} accent="var(--shopee)" />
     </>
   );
 }

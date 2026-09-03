@@ -1,13 +1,11 @@
-import { useRef, useState } from 'react';
-import { Header } from './components/Header';
-import { PlatformTabs, type TabKey } from './components/PlatformTabs';
-import { MetaTab } from './features/meta/MetaTab';
-import { ShopeeTab } from './features/shopee/ShopeeTab';
-import { TiktokTab } from './features/tiktok/TiktokTab';
-import { BusinessTab } from './features/business/BusinessTab';
-import { SummaryTab } from './features/summary/SummaryTab';
-import { ClientPicker } from './features/reports/ClientPicker';
-import { ReportsTab } from './features/reports/ReportsTab';
+import { useRef, useState, type ReactNode } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { AppShell } from './app/AppShell';
+import { HomePage } from './app/HomePage';
+import { GeneratorShell } from './app/GeneratorShell';
+import type { ReportKey } from './app/reports';
+import { AuthProvider, useAuth } from './auth/AuthProvider';
+import { LoginPage } from './auth/LoginPage';
 import { BIZ_INPUT_CHANNELS, bizBadgeLabel, emptyBizChannel, type BizChannelMetrics, type BizMetricKey, type BizPeriod, type BizRow } from './lib/business';
 import { PLATFORM_CONFIG, emptyPlatformState, emptyPlatformStateMap, type PlatformKey, type PlatformResultData } from './lib/summary';
 
@@ -15,16 +13,30 @@ function defaultChannelData(): Record<string, BizChannelMetrics> {
   return Object.fromEntries(BIZ_INPUT_CHANNELS.map((c) => [c.key, emptyBizChannel()]));
 }
 
-function App() {
-  const [activeTab, setActiveTab] = useState<TabKey>('meta');
-  const [clientId, setClientId] = useState<number | null>(null);
+function Splash() {
+  return (
+    <div className="app-splash">
+      <img src="/mil-logo.png" alt="" width={44} height={44} />
+      <span className="app-splash-bar" aria-hidden />
+    </div>
+  );
+}
 
-  // ── Cross-tab shared state ──
-  // platformState feeds the Summary Overview tab (Meta/Shopee/TikTok each
-  // report their last-generated result here); the Business Overview state
-  // (channelData/offlineStores/otherChannels) is shared between the Business
-  // Overview tab's own cards and Summary Overview's Cost per Revenue card,
-  // same as the original's module-level globals.
+// Guards the generator routes: an unauthenticated visitor is bounced to
+// /login (remembering where they were headed); the landing page stays public.
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <Splash />;
+  if (!user) return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
+  return <>{children}</>;
+}
+
+// Holds the cross-tab shared state and stays mounted across every route so
+// upload progress / generated reports survive navigating to the home page
+// and back.
+function AppRoutes() {
+  const [clientId, setClientId] = useState<number | null>(null);
   const [platformState, setPlatformState] = useState(emptyPlatformStateMap());
   const [omzetOld, setOmzetOld] = useState<number | null>(null);
   const [omzetCur, setOmzetCur] = useState<number | null>(null);
@@ -39,61 +51,67 @@ function App() {
   function invalidatePlatform(key: PlatformKey) {
     setPlatformState((prev) => (prev[key].done || prev[key].error ? { ...prev, [key]: emptyPlatformState() } : prev));
   }
-
   function handleChannelDataChange(chKey: string, metric: BizMetricKey, period: BizPeriod, v: number | null) {
     setChannelData((prev) => ({ ...prev, [chKey]: { ...prev[chKey], [metric]: { ...prev[chKey][metric], [period]: v } } }));
   }
 
   const bizState = { channelData, offlineStores, otherChannels, shopeeOmzet: { old: omzetOld, cur: omzetCur } };
-
   const doneCount = PLATFORM_CONFIG.filter((p) => platformState[p.key].done).length;
-  const badges: Record<TabKey, string> = {
-    // Meta/Shopee/TikTok badges are a simplified approximation of the
-    // original (which turned "✓" the moment a file was uploaded, before
-    // Generate) — here they turn "✓" once that platform has generated a
-    // report, which is simpler to track precisely and still communicates
-    // the same thing ("this platform is ready to show up in Summary").
+  const badges: Record<ReportKey, string> = {
     meta: platformState.meta.done ? '✓' : '—',
     shopee: platformState.shopee.done ? '✓' : '—',
     tiktok: platformState.tiktok.done ? '✓' : '—',
     business: bizBadgeLabel(bizState),
     summary: doneCount === PLATFORM_CONFIG.length ? '✓' : `${doneCount}/${PLATFORM_CONFIG.length}`,
     reports: '—',
+    brands: '—',
   };
 
   return (
-    <div id="app">
-      <Header />
-      <ClientPicker clientId={clientId} onChange={setClientId} />
-      <PlatformTabs activeTab={activeTab} onChange={setActiveTab} badges={badges} />
-
-      <MetaTab isActive={activeTab === 'meta'} clientId={clientId} onGenerated={(data) => setPlatformResult('meta', data)} onInvalidate={() => invalidatePlatform('meta')} />
-      <ShopeeTab
-        isActive={activeTab === 'shopee'}
-        clientId={clientId}
-        omzetOld={omzetOld}
-        omzetCur={omzetCur}
-        onOmzetOldChange={setOmzetOld}
-        onOmzetCurChange={setOmzetCur}
-        onGenerated={(data) => setPlatformResult('shopee', data)}
-        onInvalidate={() => invalidatePlatform('shopee')}
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/generate" element={<Navigate to="/generate/meta" replace />} />
+      <Route
+        path="/generate/:platform"
+        element={
+          <RequireAuth>
+            <GeneratorShell
+              clientId={clientId}
+              setClientId={setClientId}
+              badges={badges}
+              platformState={platformState}
+              bizState={bizState}
+              setPlatformResult={setPlatformResult}
+              invalidatePlatform={invalidatePlatform}
+              omzetOld={omzetOld}
+              omzetCur={omzetCur}
+              setOmzetOld={setOmzetOld}
+              setOmzetCur={setOmzetCur}
+              channelData={channelData}
+              offlineStores={offlineStores}
+              otherChannels={otherChannels}
+              onChannelDataChange={handleChannelDataChange}
+              setOfflineStores={setOfflineStores}
+              setOtherChannels={setOtherChannels}
+              nextRowId={() => bizRowSeq.current++}
+            />
+          </RequireAuth>
+        }
       />
-      <TiktokTab isActive={activeTab === 'tiktok'} clientId={clientId} onGenerated={(data) => setPlatformResult('tiktok', data)} onInvalidate={() => invalidatePlatform('tiktok')} />
-      <ReportsTab isActive={activeTab === 'reports'} clientId={clientId} />
-      <BusinessTab
-        isActive={activeTab === 'business'}
-        channelData={channelData}
-        offlineStores={offlineStores}
-        otherChannels={otherChannels}
-        shopeeOmzet={{ old: omzetOld, cur: omzetCur }}
-        onChannelDataChange={handleChannelDataChange}
-        onOfflineStoresChange={setOfflineStores}
-        onOtherChannelsChange={setOtherChannels}
-        nextRowId={() => bizRowSeq.current++}
-      />
-      <SummaryTab isActive={activeTab === 'summary'} platformState={platformState} bizState={bizState} />
-    </div>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppShell>
+          <AppRoutes />
+        </AppShell>
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
