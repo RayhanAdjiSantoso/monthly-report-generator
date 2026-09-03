@@ -73,47 +73,63 @@
 .brand-add input:focus,.brand-search:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(30,62,184,.12)}
 .brand-add-err{font-size:.75rem;color:var(--bad);font-weight:600}
 
-.brand-skeleton{display:flex;flex-direction:column;gap:.7rem;margin-top:.6rem}
-.brand-skeleton span{height:64px;border-radius:16px;background:linear-gradient(90deg,var(--s2),#f6f8fc,var(--s2));background-size:200% 100%;animation:brand-shine 1.3s linear infinite}
+.brand-skeleton{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:.6rem}
+.brand-skeleton span{width:130px;height:40px;border-radius:11px;background:linear-gradient(90deg,var(--s2),#f6f8fc,var(--s2));background-size:200% 100%;animation:brand-shine 1.3s linear infinite}
 @keyframes brand-shine{to{background-position:-200% 0}}
 
-.brand-list{display:flex;flex-direction:column;gap:.75rem}
-.brand-card{
-  border:1px solid var(--border);border-radius:16px;background:var(--surface);
-  box-shadow:0 1px 3px rgba(15,26,58,.05),0 8px 22px rgba(15,26,58,.05);
-  overflow:hidden;transition:box-shadow .25s var(--ease-out),border-color .25s;
+/* ── Brand list = a flow of compact pill buttons ──────────────────────── */
+.brand-chips{display:flex;flex-wrap:wrap;gap:.55rem}
+.brand-chipbtn{
+  display:inline-flex;align-items:center;gap:.5rem;
+  padding:.5rem .85rem;border-radius:11px;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--text);font:inherit;font-size:.86rem;font-weight:650;letter-spacing:-.01em;
+  cursor:pointer;box-shadow:var(--shadow-sm);
+  transition:border-color .18s,box-shadow .18s,background .18s,transform .18s var(--ease-out);
+  opacity:0;transform:translateY(6px);animation:chip-in .34s var(--ease-out) forwards;animation-delay:calc(var(--i,0) * 28ms + 40ms);
 }
-.brand-card.open{border-color:var(--acc-300);box-shadow:0 2px 6px rgba(15,26,58,.06),0 18px 44px rgba(15,26,58,.11)}
-.brand-card-head{
-  width:100%;display:flex;align-items:center;gap:.9rem;padding:.95rem 1.1rem;
-  background:none;border:0;cursor:pointer;text-align:left;font:inherit;
+@keyframes chip-in{to{opacity:1;transform:none}}
+.brand-chipbtn:hover{border-color:var(--acc-300);box-shadow:var(--shadow);transform:translateY(-1px)}
+.brand-chipbtn.open{background:var(--acc-100);border-color:var(--acc);color:var(--acc);box-shadow:0 0 0 3px rgba(30,62,184,.1)}
+.brand-chipbtn-name{white-space:nowrap}
+.brand-chipbtn-cat{font-size:.66rem;font-weight:700;color:var(--muted);background:var(--s2);border-radius:5px;padding:.1rem .38rem;white-space:nowrap}
+.brand-chipbtn.open .brand-chipbtn-cat{background:#fff}
+.brand-chipbtn-badge{
+  font-size:.62rem;font-weight:800;min-width:1.05rem;height:1.05rem;padding:0 .28rem;border-radius:5px;
+  display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums lining-nums;
 }
-.brand-card-mark{
+.brand-chipbtn-badge.bn-win{background:var(--good-100);color:var(--good)}
+.brand-chipbtn-badge.bn-con{background:var(--bad-100);color:var(--bad)}
+.brand-chipbtn-caret{font-size:.62rem;color:var(--muted2);transition:transform .22s var(--ease-out)}
+.brand-chipbtn.open .brand-chipbtn-caret{transform:rotate(180deg);color:var(--acc)}
+
+/* ── The expanded detail box ─────────────────────────────────────────── */
+.brand-detail{
+  margin-top:.9rem;border:1px solid var(--acc-300);border-radius:18px;background:var(--surface);
+  box-shadow:0 2px 8px rgba(15,26,58,.06),0 24px 60px rgba(15,26,58,.14);
+  overflow:hidden;transform-origin:top center;
+  animation:detail-in .34s var(--ease-out) both;
+}
+@keyframes detail-in{from{opacity:0;transform:translateY(-8px) scaleY(.985)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.brand-chipbtn,.brand-detail{animation:none;opacity:1;transform:none}}
+.brand-detail-head{
+  display:flex;align-items:center;gap:.85rem;padding:1rem 1.2rem;
+  background:linear-gradient(180deg,var(--acc-100),var(--surface));border-bottom:1px solid var(--border);
+}
+.brand-detail-mark{
   width:40px;height:40px;flex-shrink:0;border-radius:11px;display:flex;align-items:center;justify-content:center;
-  font-size:1.05rem;font-weight:800;color:var(--acc);background:var(--acc-100);
+  font-size:1.05rem;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--acc),var(--cyan));
 }
-.brand-card-headmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3rem}
-.brand-card-name{font-size:1rem;font-weight:750;letter-spacing:-.02em;color:var(--text)}
-.brand-card-meta{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
-.brand-card-empty{font-size:.72rem;color:var(--muted2);font-style:italic}
-.brand-card-chevron{color:var(--muted2);font-size:.8rem;transition:transform .25s var(--ease-out)}
-.brand-card.open .brand-card-chevron{transform:rotate(180deg)}
-
-.brand-chip{
-  font-size:.66rem;font-weight:800;letter-spacing:.01em;padding:.16rem .5rem;border-radius:6px;white-space:nowrap;
-  background:var(--s2);color:var(--muted);
+.brand-detail-title{flex:1;min-width:0;display:flex;flex-direction:column}
+.brand-detail-name{font-size:1.05rem;font-weight:800;letter-spacing:-.02em;color:var(--text)}
+.brand-detail-sub{font-size:.7rem;color:var(--muted);font-weight:600}
+.brand-detail-close{
+  width:30px;height:30px;flex-shrink:0;border:0;border-radius:9px;background:var(--surface);color:var(--muted);
+  font-size:.8rem;cursor:pointer;transition:background .15s,color .15s;
 }
-.brand-chip.bn-win{background:var(--good-100);color:var(--good)}
-.brand-chip.bn-con{background:var(--bad-100);color:var(--bad)}
-.brand-chip.bn-note{background:var(--acc-100);color:var(--acc)}
+.brand-detail-close:hover{background:var(--bad-100);color:var(--bad)}
+.brand-detail-body{padding:1.2rem 1.3rem 1.4rem}
 
-/* Accordion body — animatable 0fr → 1fr grid row. */
-.brand-card-bodywrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .34s var(--ease-out)}
-.brand-card.open .brand-card-bodywrap{grid-template-rows:1fr}
-.brand-card-body{overflow:hidden;min-height:0}
-.brand-card.open .brand-card-body{padding:.2rem 1.1rem 1.2rem;border-top:1px solid var(--border)}
-
-.brand-fields{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-top:1rem}
+.brand-fields{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-top:0}
 .brand-field{display:flex;flex-direction:column;gap:.35rem;margin-top:.9rem}
 .brand-fields .brand-field{margin-top:0}
 .brand-field > span{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
@@ -125,6 +141,14 @@
 .brand-field input:focus,.brand-field textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(30,62,184,.12)}
 .brand-save-row{display:flex;align-items:center;gap:.8rem;margin-top:1rem;flex-wrap:wrap}
 .brand-save-hint{font-size:.72rem;color:var(--muted)}
+
+.brand-chip{
+  font-size:.66rem;font-weight:800;letter-spacing:.01em;padding:.16rem .5rem;border-radius:6px;white-space:nowrap;
+  background:var(--s2);color:var(--muted);
+}
+.brand-chip.bn-win{background:var(--good-100);color:var(--good)}
+.brand-chip.bn-con{background:var(--bad-100);color:var(--bad)}
+.brand-chip.bn-note{background:var(--acc-100);color:var(--acc)}
 
 .brand-notes{margin-top:1.5rem;padding-top:1.1rem;border-top:1px dashed var(--border)}
 .brand-notes-title{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.7rem}

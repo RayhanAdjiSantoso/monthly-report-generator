@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SearchSelect } from '../../components/SearchSelect';
 import { createClient, getClients } from './api';
 import type { Client } from './types';
 
@@ -50,14 +51,7 @@ export function ClientPicker({ clientId, onChange }: ClientPickerProps) {
       <span className="client-bar-label">Klien</span>
       {!adding ? (
         <>
-          <select className="custom-col-select" value={clientId ?? ''} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">— pilih klien —</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <SearchSelect options={clients} value={clientId} onChange={onChange} placeholder="— pilih klien —" searchPlaceholder="Cari brand…" emptyLabel="Brand tidak ditemukan" />
           <span className="mpill mpill-add" onClick={() => setAdding(true)}>
             + Klien baru
           </span>

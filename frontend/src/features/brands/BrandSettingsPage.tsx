@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { Reveal } from '../../components/Reveal';
 import { addNote, createBrand, deleteNote, getBrands, updateBrand, updateNote, type Brand, type BrandNote, type BrandNoteKind } from './api';
 
@@ -26,6 +26,8 @@ export function BrandSettingsPage() {
     return q ? brands.filter((b) => b.name.toLowerCase().includes(q) || b.category.toLowerCase().includes(q)) : brands;
   }, [brands, query]);
 
+  const openBrand = brands?.find((b) => b.id === openId) ?? null;
+
   function patchBrand(id: number, patch: Partial<Brand>) {
     setBrands((prev) => (prev ? prev.map((b) => (b.id === id ? { ...b, ...patch } : b)) : prev));
   }
@@ -48,24 +50,51 @@ export function BrandSettingsPage() {
         <input className="brand-search" placeholder="Cari brand…" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
 
-      {error && <div className="inline-notice error" style={{ marginTop: '1rem' }}><div className="inline-notice-icon">⚠</div><div>{error}</div></div>}
+      {error && (
+        <div className="inline-notice error" style={{ marginTop: '1rem' }}>
+          <div className="inline-notice-icon">⚠</div>
+          <div>{error}</div>
+        </div>
+      )}
 
       {!brands ? (
         <div className="brand-skeleton">
-          <span /><span /><span />
+          <span />
+          <span />
+          <span />
         </div>
       ) : filtered.length === 0 ? (
         <div className="empty-note" style={{ padding: '2rem 0' }}>
           {query ? `Tidak ada brand cocok "${query}".` : 'Belum ada brand. Tambahkan brand pertama di atas.'}
         </div>
       ) : (
-        <div className="brand-list">
-          {filtered.map((b, i) => (
-            <Reveal key={b.id} delay={i * 45}>
-              <BrandCard brand={b} open={openId === b.id} onToggle={() => setOpenId((id) => (id === b.id ? null : b.id))} onPatch={(p) => patchBrand(b.id, p)} />
-            </Reveal>
-          ))}
-        </div>
+        <>
+          <div className="brand-chips">
+            {filtered.map((b, i) => {
+              const wins = b.notes.filter((n) => n.kind === 'win').length;
+              const cons = b.notes.filter((n) => n.kind === 'con').length;
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  className={`brand-chipbtn${openId === b.id ? ' open' : ''}`}
+                  style={{ '--i': i } as CSSProperties}
+                  onClick={() => setOpenId((id) => (id === b.id ? null : b.id))}
+                >
+                  <span className="brand-chipbtn-name">{b.name}</span>
+                  {b.category && <span className="brand-chipbtn-cat">{b.category}</span>}
+                  {wins > 0 && <span className="brand-chipbtn-badge bn-win">{wins}</span>}
+                  {cons > 0 && <span className="brand-chipbtn-badge bn-con">{cons}</span>}
+                  <span className="brand-chipbtn-caret" aria-hidden>
+                    ▾
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {openBrand && <BrandDetail key={openBrand.id} brand={openBrand} onPatch={(p) => patchBrand(openBrand.id, p)} onClose={() => setOpenId(null)} />}
+        </>
       )}
     </div>
   );
@@ -103,7 +132,7 @@ function AddBrandForm({ onAdd }: { onAdd: (name: string) => Promise<void> }) {
   );
 }
 
-function BrandCard({ brand, open, onToggle, onPatch }: { brand: Brand; open: boolean; onToggle: () => void; onPatch: (p: Partial<Brand>) => void }) {
+function BrandDetail({ brand, onPatch, onClose }: { brand: Brand; onPatch: (p: Partial<Brand>) => void; onClose: () => void }) {
   const [name, setName] = useState(brand.name);
   const [category, setCategory] = useState(brand.category);
   const [description, setDescription] = useState(brand.description);
@@ -126,60 +155,54 @@ function BrandCard({ brand, open, onToggle, onPatch }: { brand: Brand; open: boo
     }
   }
 
-  const wins = brand.notes.filter((n) => n.kind === 'win').length;
-  const cons = brand.notes.filter((n) => n.kind === 'con').length;
-
   return (
-    <div className={`brand-card${open ? ' open' : ''}`}>
-      <button type="button" className="brand-card-head" onClick={onToggle} aria-expanded={open}>
-        <span className="brand-card-mark" aria-hidden>
+    <div className="brand-detail">
+      <div className="brand-detail-head">
+        <span className="brand-detail-mark" aria-hidden>
           {brand.name.charAt(0).toUpperCase()}
         </span>
-        <span className="brand-card-headmain">
-          <span className="brand-card-name">{brand.name}</span>
-          <span className="brand-card-meta">
-            {brand.category && <span className="brand-chip">{brand.category}</span>}
-            {wins > 0 && <span className="brand-chip bn-win">{wins} winning</span>}
-            {cons > 0 && <span className="brand-chip bn-con">{cons} kendala</span>}
-            {!brand.category && wins === 0 && cons === 0 && <span className="brand-card-empty">belum ada detail</span>}
-          </span>
-        </span>
-        <span className="brand-card-chevron" aria-hidden>
-          ▾
-        </span>
-      </button>
-
-      <div className="brand-card-bodywrap">
-        <div className="brand-card-body">
-          <div className="brand-fields">
-            <label className="brand-field">
-              <span>Nama brand</span>
-              <input value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
-            <label className="brand-field">
-              <span>Kategori / industri</span>
-              <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="cth: Skincare, F&B, Fashion" />
-            </label>
-          </div>
-          <label className="brand-field">
-            <span>Deskripsi & perilaku brand</span>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              placeholder="Positioning, target market, gaya komunikasi, pola musiman, sensitivitas harga, channel yang biasanya kuat, dsb."
-            />
-          </label>
-
-          <div className="brand-save-row">
-            <button type="button" className="btn btn-primary" disabled={!dirty || saveState === 'saving'} onClick={save}>
-              {saveState === 'saving' ? 'Menyimpan…' : saveState === 'saved' ? 'Tersimpan ✓' : 'Simpan perubahan'}
-            </button>
-            {brand.updatedAt && <span className="brand-save-hint">terakhir diubah {new Date(brand.updatedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
-          </div>
-
-          <NotesEditor brand={brand} onPatch={onPatch} />
+        <div className="brand-detail-title">
+          <span className="brand-detail-name">{brand.name}</span>
+          <span className="brand-detail-sub">Identitas & histori brand</span>
         </div>
+        <button type="button" className="brand-detail-close" onClick={onClose} aria-label="Tutup">
+          ✕
+        </button>
+      </div>
+
+      <div className="brand-detail-body">
+        <div className="brand-fields">
+          <label className="brand-field">
+            <span>Nama brand</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label className="brand-field">
+            <span>Kategori / industri</span>
+            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="cth: Skincare, F&B, Fashion" />
+          </label>
+        </div>
+        <label className="brand-field">
+          <span>Deskripsi & perilaku brand</span>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            placeholder="Positioning, target market, gaya komunikasi, pola musiman, sensitivitas harga, channel yang biasanya kuat, dsb."
+          />
+        </label>
+
+        <div className="brand-save-row">
+          <button type="button" className="btn btn-primary" disabled={!dirty || saveState === 'saving'} onClick={save}>
+            {saveState === 'saving' ? 'Menyimpan…' : saveState === 'saved' ? 'Tersimpan ✓' : 'Simpan perubahan'}
+          </button>
+          {brand.updatedAt && (
+            <span className="brand-save-hint">
+              terakhir diubah {new Date(brand.updatedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+          )}
+        </div>
+
+        <NotesEditor brand={brand} onPatch={onPatch} />
       </div>
     </div>
   );
@@ -224,7 +247,11 @@ function NotesEditor({ brand, onPatch }: { brand: Brand; onPatch: (p: Partial<Br
       <div className="brand-notes-title">Catatan bulanan · winnings & kendala</div>
 
       <div className="brand-notes-list">
-        {brand.notes.length === 0 && <div className="empty-note" style={{ padding: '.4rem 0' }}>Belum ada catatan. Tambahkan winning atau kendala periode lalu di bawah.</div>}
+        {brand.notes.length === 0 && (
+          <div className="empty-note" style={{ padding: '.4rem 0' }}>
+            Belum ada catatan. Tambahkan winning atau kendala periode lalu di bawah.
+          </div>
+        )}
         {brand.notes.map((n) => (
           <NoteRow key={n.id} note={n} onEdit={(p) => edit(n.id, p)} onRemove={() => remove(n.id)} />
         ))}
