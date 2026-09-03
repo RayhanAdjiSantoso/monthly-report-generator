@@ -117,6 +117,8 @@ function MultiMetricTable<T extends { metrics: GenericMetricCell[] }>({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
     function measure() {
       const table = scrollRef.current?.querySelector('table');
       const head = table?.tHead;
@@ -127,12 +129,22 @@ function MultiMetricTable<T extends { metrics: GenericMetricCell[] }>({
         return;
       }
       let h = head.getBoundingClientRect().height;
+      // While this table lives in an inactive report tab (display:none) every
+      // rect measures 0 — don't cap the scroll area to ~1px and hide it; wait
+      // for the ResizeObserver below to fire once the panel becomes visible.
+      if (h === 0) return;
       for (let i = 0; i < VISIBLE_ROWS; i++) h += body.rows[i].getBoundingClientRect().height;
       setMaxHeight(Math.ceil(h) + 1);
     }
     measure();
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => measure()) : null;
+    const table = container.querySelector('table');
+    if (ro && table) ro.observe(table);
+    return () => {
+      window.removeEventListener('resize', measure);
+      ro?.disconnect();
+    };
   }, [rows]);
 
   if (!rows.length) return <div className="empty-note">{emptyMessage}</div>;
