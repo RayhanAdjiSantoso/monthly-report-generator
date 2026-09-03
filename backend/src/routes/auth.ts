@@ -6,10 +6,13 @@ export const authRouter = Router();
 
 const isProd = process.env.VERCEL === '1';
 
-// One-time bootstrap: if there are no users yet, the first login with the
-// configured bootstrap credentials creates that account. Set
-// AUTH_BOOTSTRAP_EMAIL / AUTH_BOOTSTRAP_PASSWORD to override the defaults.
-const BOOTSTRAP_EMAIL = (process.env.AUTH_BOOTSTRAP_EMAIL ?? 'jonathan.h@mil.digital.id').toLowerCase();
+// One-time bootstrap: while there are no users yet, the first login with a
+// configured bootstrap email + password creates that account (using whichever
+// email was actually typed). Set AUTH_BOOTSTRAP_EMAIL / AUTH_BOOTSTRAP_PASSWORD
+// to override.
+const BOOTSTRAP_EMAILS = (process.env.AUTH_BOOTSTRAP_EMAIL ? [process.env.AUTH_BOOTSTRAP_EMAIL] : ['jonathan.h@mildigital.id', 'jonathan.h@mil.digital.id']).map((e) =>
+  e.trim().toLowerCase(),
+);
 const BOOTSTRAP_PASSWORD = process.env.AUTH_BOOTSTRAP_PASSWORD ?? 'mildigital';
 
 authRouter.post('/login', async (req, res) => {
@@ -28,10 +31,10 @@ authRouter.post('/login', async (req, res) => {
   // Bootstrap the very first account on first successful login.
   if (rows.length === 0) {
     const { rows: countRows } = await pool.query<{ n: string }>('SELECT count(*)::text AS n FROM ads_reports.app_users');
-    if (countRows[0].n === '0' && email === BOOTSTRAP_EMAIL && password === BOOTSTRAP_PASSWORD) {
+    if (countRows[0].n === '0' && BOOTSTRAP_EMAILS.includes(email) && password === BOOTSTRAP_PASSWORD) {
       const inserted = await pool.query<{ id: number; email: string; password_hash: string; display_name: string | null }>(
         'INSERT INTO ads_reports.app_users (email, password_hash, display_name) VALUES ($1, $2, $3) RETURNING id, email, password_hash, display_name',
-        [BOOTSTRAP_EMAIL, hashPassword(BOOTSTRAP_PASSWORD), 'Jonathan'],
+        [email, hashPassword(password), 'Jonathan'],
       );
       rows = inserted.rows;
     }

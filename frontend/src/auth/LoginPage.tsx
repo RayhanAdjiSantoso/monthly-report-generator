@@ -45,7 +45,7 @@ export function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="nama@mil.digital.id"
+              placeholder="nama@mildigital.id"
             />
           </label>
           <label className="login-field">
