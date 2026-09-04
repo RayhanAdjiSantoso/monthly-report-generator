@@ -167,6 +167,45 @@ function DataTable<T>({
 // an ads strategist works from vs. the ones a client cares about. Drag a row
 // (or tap ⇄) to move it between groups; the choice is session-only.
 
+// The three headline numbers, pulled straight from the funnel values (no new
+// maths) into a fixed table above the editable groups — a quick read before
+// anyone rearranges the detail.
+const FA_OVERALL_KEYS = ['spend', 'purchases', 'roas'] as const;
+
+function OverallAdsTable({ values, p1, p2 }: { values: FunnelValueRow[]; p1: string; p2: string }) {
+  const rows = FA_OVERALL_KEYS.map((k) => values.find((v) => v.key === k)).filter((v): v is FunnelValueRow => Boolean(v));
+  if (!rows.length) return null;
+  return (
+    <div className="fa-overall">
+      <div className="fa-overall-head">
+        Overall Ads <span className="sec-badge">3 metrik utama</span>
+      </div>
+      <table className="kpi-table fa-overall-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>{p1}</th>
+            <th>{p2}</th>
+            <th>Changes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((v) => (
+            <tr key={v.key}>
+              <td>{v.label}</td>
+              <td className="num">{fmtPivotVal(v.oldNum, v.fmt)}</td>
+              <td className="num">{fmtPivotVal(v.curNum, v.fmt)}</td>
+              <td>
+                <DeltaPill cls={v.cls}>{v.delta}</DeltaPill>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 type FgGroup = 'strategist' | 'client';
 
 const FG_DEFAULT: Record<string, FgGroup> = {
@@ -307,6 +346,7 @@ export function FundamentalAnalysisSection({
         <SectionDownloadButton />
       </div>
       <div style={{ padding: '1.1rem 1.4rem 0' }}>
+        <OverallAdsTable values={values} p1={p1} p2={p2} />
         <FundamentalGroupedValues values={values} p1={p1} p2={p2} />
       </div>
       <div className="empty-note" style={{ padding: '.9rem 1.4rem 0' }}>
