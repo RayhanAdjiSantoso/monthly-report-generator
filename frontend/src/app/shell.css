@@ -242,18 +242,22 @@
 }
 .gen-wrap{
   padding-block:clamp(1.4rem,3vw,2.4rem) 5rem;
-  display:grid;grid-template-columns:236px minmax(0,1fr);gap:clamp(1.3rem,2.6vw,2.4rem);
+  display:grid;grid-template-columns:258px minmax(0,1fr);gap:clamp(1.3rem,2.6vw,2.4rem);
   align-items:start;
 }
-.gen-sidebar{position:sticky;top:calc(66px + 1.6rem)}
-.gen-sidebar-title{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.13em;color:var(--muted2);padding:0 .55rem .7rem}
+.gen-sidebar{
+  position:sticky;top:calc(66px + 1.6rem);
+  background:var(--surface);border:1px solid var(--border);border-radius:18px;
+  box-shadow:var(--shadow-sm);padding:.75rem;
+}
+.gen-sidebar-title{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.13em;color:var(--muted2);padding:.15rem .55rem .8rem}
 .gen-sidebar-nav{position:relative;display:flex;flex-direction:column;gap:4px}
 .gen-sidebar-item{position:relative}
 
 .gen-sidebar-link{
   position:relative;z-index:1;isolation:isolate;
-  display:flex;align-items:center;gap:12px;padding:.62rem .7rem;border-radius:13px;
-  text-decoration:none;font-size:.9rem;font-weight:600;color:var(--muted);letter-spacing:-.01em;
+  display:flex;align-items:center;gap:10px;padding:.58rem .6rem;border-radius:12px;
+  text-decoration:none;font-size:.88rem;font-weight:600;color:var(--muted);letter-spacing:-.015em;white-space:nowrap;
   transition:color .22s var(--ease-out);
 }
 /* The gliding highlight — a full-row soft pill, brand-tinted to the active item. */
@@ -282,9 +286,9 @@
 .gen-sidebar-link.active .gen-sidebar-badge{color:var(--gs-accent,var(--acc))}
 
 .gen-sidebar-help{
-  margin-top:1rem;display:flex;gap:.6rem;align-items:flex-start;
-  padding:.8rem .85rem;border-radius:14px;
-  background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-sm);
+  margin-top:.9rem;display:flex;gap:.6rem;align-items:flex-start;
+  padding:.8rem .85rem;border-radius:13px;
+  background:var(--s2);border:1px solid var(--border);
 }
 .gen-sidebar-help-ico{
   flex:0 0 auto;width:28px;height:28px;border-radius:8px;
@@ -686,7 +690,7 @@
   .gen-wrap{grid-template-columns:1fr;padding-bottom:4rem}
   .gen-sidebar{
     position:static;display:flex;gap:.4rem;overflow-x:auto;
-    padding-bottom:.4rem;scrollbar-width:thin;
+    padding:0 0 .4rem;background:none;border:0;border-radius:0;box-shadow:none;scrollbar-width:thin;
   }
   .gen-sidebar-title{display:none}
   .gen-sidebar-nav{flex-direction:row;gap:.4rem}
