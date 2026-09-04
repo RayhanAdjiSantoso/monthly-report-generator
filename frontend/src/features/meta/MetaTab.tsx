@@ -5,6 +5,7 @@ import { useScrollAfterGenerate } from '../../hooks/useScrollAfterGenerate';
 import { DemoBreakdownCard } from '../../components/DemoBreakdownCard';
 import { HowTo, HowToStep } from '../../components/HowTo';
 import { InlineNotice } from '../../components/InlineNotice';
+import { SearchSelect } from '../../components/SearchSelect';
 import {
   META_OBJECTIVE_CHOICES,
   defaultMetaDayRanges,
@@ -43,6 +44,12 @@ const REQUIRED_COLS = [
   { label: 'Month/Day', kw: ['month', 'day'] },
   { label: 'Campaign Name', kw: ['campaign'] },
 ];
+
+const INDUSTRY_OPTIONS = [
+  { id: 'b2b', name: 'B2B / Services' },
+  { id: 'retail', name: 'Retail' },
+];
+const OBJECTIVE_OPTIONS = META_OBJECTIVE_CHOICES.map((o) => ({ id: o.key, name: o.label }));
 
 function formatGeneratedDate(): string {
   return new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -473,32 +480,30 @@ export function MetaTab({ isActive, clientId, onGenerated, onInvalidate }: MetaT
             </InlineNotice>
           )}
           <div className="dual-select">
-            <label className="dual-select-field">
-              <span>Industri</span>
-              <select
-                value={industry === 'b2b' || industry === 'retail' ? industry : ''}
-                onChange={(e) => pickIndustry((e.target.value || null) as MetaIndustry)}
-              >
-                <option value="">— pilih —</option>
-                <option value="b2b">B2B / Services</option>
-                <option value="retail">Retail</option>
-              </select>
+            <div className="dual-select-field">
+              <span className="dual-select-label">Industri</span>
+              <SearchSelect
+                options={INDUSTRY_OPTIONS}
+                value={industry === 'b2b' || industry === 'retail' ? industry : null}
+                onChange={(id) => pickIndustry(id as MetaIndustry)}
+                placeholder="— pilih —"
+                searchable={false}
+              />
               <span className="dual-select-hint">Manual — tidak ada di export Meta</span>
-            </label>
-            <label className="dual-select-field">
-              <span>Objective{objectiveCol ? ' · prefill dari file' : ''}</span>
-              <select value={objective ?? ''} onChange={(e) => pickObjective((e.target.value || null) as MetaObjectiveKey | null)}>
-                <option value="">— pilih —</option>
-                {META_OBJECTIVE_CHOICES.map((o) => (
-                  <option key={o.key} value={o.key}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+            </div>
+            <div className="dual-select-field">
+              <span className="dual-select-label">Objective{objectiveCol ? ' · prefill dari file' : ''}</span>
+              <SearchSelect
+                options={OBJECTIVE_OPTIONS}
+                value={objective}
+                onChange={(id) => pickObjective(id as MetaObjectiveKey)}
+                placeholder="— pilih —"
+                searchable={false}
+              />
               <span className="dual-select-hint">
                 {objectiveCol ? 'Info dari file — split tetap per objective' : 'Metrik headline Non-Boost (file tanpa kolom Objective)'}
               </span>
-            </label>
+            </div>
           </div>
         </div>
       )}

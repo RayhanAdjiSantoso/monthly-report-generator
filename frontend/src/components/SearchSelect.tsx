@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface SearchOption {
-  id: number;
+  id: string | number;
   name: string;
 }
 
-// A custom, searchable single-select — a white glassy popup with a filter box
-// and a keyboard-navigable list, replacing the native <select> whose dropdown
-// can't be styled. Closes on outside-click / Escape / pick.
+// A custom single-select — a white glassy popup with a keyboard-navigable
+// list, replacing the native <select> whose dropdown can't be styled. Closes
+// on outside-click / Escape / pick. The filter box (`searchable`, on by
+// default) is meant for longer lists like the client picker; a short fixed
+// list (industry, objective, …) reads cleaner with it turned off.
 export function SearchSelect({
   options,
   value,
@@ -15,13 +17,15 @@ export function SearchSelect({
   placeholder = '— pilih —',
   searchPlaceholder = 'Cari…',
   emptyLabel = 'Tidak ada hasil',
+  searchable = true,
 }: {
   options: SearchOption[];
-  value: number | null;
-  onChange: (id: number) => void;
+  value: string | number | null;
+  onChange: (id: string | number) => void;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyLabel?: string;
+  searchable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -32,14 +36,17 @@ export function SearchSelect({
 
   const selected = options.find((o) => o.id === value) ?? null;
   const filtered = useMemo(() => {
+    if (!searchable) return options;
     const s = q.trim().toLowerCase();
     return s ? options.filter((o) => o.name.toLowerCase().includes(s)) : options;
-  }, [options, q]);
+  }, [options, q, searchable]);
 
   useEffect(() => {
     if (!open) return;
     setHi(Math.max(0, filtered.findIndex((o) => o.id === value)));
-    const t = window.setTimeout(() => inputRef.current?.focus(), 20);
+    // Focus the search input if there is one; otherwise the popup itself, so
+    // arrow-key navigation works right away.
+    const t = window.setTimeout(() => (searchable ? inputRef.current : listRef.current)?.focus(), 20);
     const onDoc = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
@@ -57,7 +64,7 @@ export function SearchSelect({
     el?.scrollIntoView({ block: 'nearest' });
   }, [hi]);
 
-  function pick(id: number) {
+  function pick(id: string | number) {
     onChange(id);
     setOpen(false);
     setQ('');
@@ -92,22 +99,24 @@ export function SearchSelect({
 
       {open && (
         <div className="ssel-pop" role="listbox">
-          <div className="ssel-search">
-            <span className="ssel-search-icon" aria-hidden>
-              ⌕
-            </span>
-            <input
-              ref={inputRef}
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setHi(0);
-              }}
-              onKeyDown={onKeyDown}
-              placeholder={searchPlaceholder}
-            />
-          </div>
-          <div className="ssel-list" ref={listRef}>
+          {searchable && (
+            <div className="ssel-search">
+              <span className="ssel-search-icon" aria-hidden>
+                ⌕
+              </span>
+              <input
+                ref={inputRef}
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setHi(0);
+                }}
+                onKeyDown={onKeyDown}
+                placeholder={searchPlaceholder}
+              />
+            </div>
+          )}
+          <div className="ssel-list" ref={listRef} tabIndex={searchable ? undefined : -1} onKeyDown={searchable ? undefined : onKeyDown}>
             {filtered.length === 0 ? (
               <div className="ssel-empty">{emptyLabel}</div>
             ) : (

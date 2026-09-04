@@ -51,7 +51,7 @@ export function ClientPicker({ clientId, onChange }: ClientPickerProps) {
       <span className="client-bar-label">Klien</span>
       {!adding ? (
         <>
-          <SearchSelect options={clients} value={clientId} onChange={onChange} placeholder="— pilih klien —" searchPlaceholder="Cari brand…" emptyLabel="Brand tidak ditemukan" />
+          <SearchSelect options={clients} value={clientId} onChange={(id) => onChange(Number(id))} placeholder="— pilih klien —" searchPlaceholder="Cari brand…" emptyLabel="Brand tidak ditemukan" />
           <span className="mpill mpill-add" onClick={() => setAdding(true)}>
             + Klien baru
           </span>
