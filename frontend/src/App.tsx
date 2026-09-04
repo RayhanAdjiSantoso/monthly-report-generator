@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { AppShell } from './app/AppShell';
 import { HomePage } from './app/HomePage';
 import { GeneratorShell } from './app/GeneratorShell';
@@ -67,8 +68,22 @@ function AppRoutes() {
     brands: '—',
   };
 
+  const location = useLocation();
+  const reduce = useReducedMotion();
+  // Coarse key: all /generate/* share one key so switching report modules
+  // doesn't remount the shell (upload state must survive).
+  const groupKey = location.pathname.startsWith('/generate') ? 'gen' : location.pathname;
+
   return (
-    <Routes>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={groupKey}
+        initial={reduce ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={reduce ? undefined : { opacity: 0, y: -8 }}
+        transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+      >
+    <Routes location={location}>
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/generate" element={<Navigate to="/generate/meta" replace />} />
@@ -101,6 +116,8 @@ function AppRoutes() {
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 

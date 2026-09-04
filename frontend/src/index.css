@@ -39,8 +39,9 @@
 
   --text:#0f1a3a;--muted:#6b7a9e;--muted2:#a0aec0;
   --f:'Inter',system-ui,sans-serif;
-  --shadow:0 1px 4px rgba(30,62,184,.07),0 4px 16px rgba(30,62,184,.06);
-  --shadow-sm:0 1px 3px rgba(30,62,184,.08);
+  --shadow:0 1px 2px rgba(15,26,58,.04),0 8px 28px rgba(15,26,58,.06);
+  --shadow-sm:0 1px 2px rgba(15,26,58,.05),0 3px 10px rgba(15,26,58,.04);
+  --ring:0 0 0 3px rgba(30,62,184,.12);
 }
 
 /* One typeface only (Inter) — no second "mono" family anywhere, including
@@ -50,7 +51,10 @@
 code{font-family:inherit}
 .num{font-variant-numeric:tabular-nums lining-nums;font-feature-settings:'tnum' 1,'lnum' 1}
 
-body{background:var(--bg);color:var(--text);font-family:var(--f);min-height:100vh}
+body{color:var(--text);font-family:var(--f);min-height:100vh;
+  background:var(--bg);
+  background-image:radial-gradient(140% 70% at 50% -10%,#f3f6fc 0%,rgba(243,246,252,0) 55%),linear-gradient(180deg,#fcfdff 0%,#f7f9fd 100%);
+  background-attachment:fixed}
 /* #app is now just the generator page's content column (see .gen-main in
    shell.css); the old fixed 1080px centered wrapper is gone. */
 #app{width:100%}
@@ -512,21 +516,33 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
    (done / current / todo) that makes the upload→label→generate→report flow
    read as steps instead of a form. Accent color follows whichever platform
    tab it's rendered in, via --rail-accent set inline by the caller. ── */
-.step-rail{--rail-accent:var(--acc);display:flex;gap:1.1rem;margin-bottom:1.4rem}
-.step-rail-track{display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:.15rem}
-.step-rail-node{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.66rem;font-weight:800;flex-shrink:0;z-index:1;transition:background .18s,border-color .18s,color .18s}
-.step-rail-node.done{background:var(--rail-accent);color:#fff}
-.step-rail-node.current{background:var(--surface);border:2px solid var(--rail-accent);color:var(--rail-accent);box-shadow:0 0 0 4px color-mix(in srgb, var(--rail-accent) 12%, transparent)}
-.step-rail-node.todo{background:var(--s2);border:2px solid var(--border);color:var(--muted2)}
-.step-rail-line{width:2px;flex:1;min-height:18px;background:var(--border);margin:2px 0}
-.step-rail-line.done{background:var(--rail-accent)}
-.step-rail-steps{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between}
-.step-rail-item{padding-bottom:1.15rem}
-.step-rail-item:last-child{padding-bottom:0}
-.step-rail-label{font-size:.85rem;font-weight:700;color:var(--text)}
-.step-rail-label.todo{color:var(--muted2);font-weight:600}
-.step-rail-sub{font-size:.74rem;color:var(--muted);margin-top:.15rem;line-height:1.4}
-@media(max-width:600px){.step-rail{gap:.7rem}.step-rail-label{font-size:.8rem}}
+.stepper{--rail-accent:var(--acc);display:flex;gap:.5rem;flex-wrap:wrap}
+.stepper-item{
+  position:relative;flex:1 1 200px;
+  display:flex;align-items:center;gap:.7rem;
+  padding:.7rem .85rem;border-radius:12px;border:1.5px solid transparent;background:transparent;
+  transition:color .25s var(--ease-out),background .3s var(--ease-out),border-color .3s var(--ease-out),box-shadow .3s var(--ease-out);
+}
+.stepper-current{
+  border-color:var(--rail-accent);
+  background:color-mix(in srgb,var(--rail-accent) 8%,var(--surface));
+  box-shadow:0 4px 16px color-mix(in srgb,var(--rail-accent) 15%,transparent);
+}
+.stepper-node{
+  width:30px;height:30px;flex-shrink:0;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;
+  background:var(--s2);border:1.5px solid var(--border);color:var(--muted2);
+  font-variant-numeric:tabular-nums lining-nums;
+  transition:background .2s var(--ease-out),color .2s,border-color .2s;
+}
+.stepper-done .stepper-node{background:var(--rail-accent);border-color:transparent;color:#fff}
+.stepper-current .stepper-node{background:var(--rail-accent);border-color:transparent;color:#fff;box-shadow:0 4px 12px color-mix(in srgb,var(--rail-accent) 30%,transparent)}
+.stepper-body{display:flex;flex-direction:column;min-width:0}
+.stepper-label{font-size:.85rem;font-weight:700;color:var(--text);line-height:1.25}
+.stepper-todo .stepper-label{color:var(--muted2);font-weight:600}
+.stepper-sub{font-size:.72rem;color:var(--muted);margin-top:.1rem;line-height:1.3}
+.stepper-sep{display:none}
+@media(max-width:760px){.stepper{flex-direction:column}.stepper-item{flex:1 1 auto}}
 
 /* ── Compare Chip — the signature motif's second application: the
    old-period → current-period badge used in report headers wherever p1/p2

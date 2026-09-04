@@ -15,6 +15,17 @@
   padding-inline:var(--page-x);
 }
 
+/* ── Motion: panel/tab fade, card entrance, button micro-interactions ───── */
+@keyframes panel-fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.panel.active{animation:panel-fade .34s var(--ease-out) both}
+@keyframes card-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.gen-main > .client-bar{animation:card-rise .46s var(--ease-out) both}
+.gen-main .stepper{animation:card-rise .46s var(--ease-out) both;animation-delay:.04s}
+.gen-main > .howto{animation:card-rise .46s var(--ease-out) both;animation-delay:.02s}
+.btn{transition:transform .12s var(--ease-out),background .18s,box-shadow .18s,border-color .18s,color .15s}
+.btn:active{transform:scale(.975)}
+.btn:disabled{transform:none}
+
 /* ── Motion primitive (used by <Reveal/>) ───────────────────────────────── */
 .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s var(--ease-out),transform .7s var(--ease-out)}
 .reveal-in{opacity:1;transform:none}
@@ -231,50 +242,95 @@
 }
 .gen-wrap{
   padding-block:clamp(1.4rem,3vw,2.4rem) 5rem;
-  display:grid;grid-template-columns:236px minmax(0,1fr);gap:clamp(1.3rem,2.6vw,2.4rem);
+  display:grid;grid-template-columns:258px minmax(0,1fr);gap:clamp(1.3rem,2.6vw,2.4rem);
   align-items:start;
 }
-.gen-sidebar{position:sticky;top:calc(66px + 1.4rem)}
-.gen-sidebar-title{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted2);padding:0 .7rem .55rem}
-.gen-sidebar-nav{position:relative;display:flex;flex-direction:column;gap:3px}
-
-/* The gliding highlight behind the active report. */
-.gen-sidebar-pill{
-  position:absolute;left:0;right:0;top:0;border-radius:12px;z-index:0;pointer-events:none;
-  box-shadow:0 4px 14px rgba(15,26,58,.06),inset 0 0 0 1px rgba(15,26,58,.04);
-  transition:transform .4s var(--ease-out),height .4s var(--ease-out),background .3s ease;
-  will-change:transform,height;
+.gen-sidebar{
+  position:sticky;top:calc(66px + 1.6rem);
+  background:var(--surface);border:1px solid var(--border);border-radius:18px;
+  box-shadow:var(--shadow-sm);padding:.75rem;
 }
+.gen-sidebar-title{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.13em;color:var(--muted2);padding:.15rem .55rem .8rem}
+.gen-sidebar-nav{position:relative;display:flex;flex-direction:column;gap:4px}
+.gen-sidebar-item{position:relative}
+
 .gen-sidebar-link{
-  position:relative;z-index:1;
-  display:flex;align-items:center;gap:11px;padding:.72rem .85rem;border-radius:12px;
-  text-decoration:none;font-size:.9rem;font-weight:600;color:var(--muted);letter-spacing:-.01em;
-  transition:color .2s ease,padding .28s var(--ease-out);
-  opacity:0;transform:translateX(-9px);
-  animation:gs-in .42s var(--ease-out) forwards;animation-delay:calc(var(--gs-i,0) * 48ms + 90ms);
+  position:relative;z-index:1;isolation:isolate;
+  display:flex;align-items:center;gap:10px;padding:.58rem .6rem;border-radius:12px;
+  text-decoration:none;font-size:.88rem;font-weight:600;color:var(--muted);letter-spacing:-.015em;white-space:nowrap;
+  transition:color .22s var(--ease-out);
+}
+/* The gliding highlight — a full-row soft pill, brand-tinted to the active item. */
+.gen-sidebar-pill{
+  position:absolute;inset:0;z-index:-1;border-radius:13px;
+  background:var(--gs-tint,var(--acc-100));
+  box-shadow:0 4px 16px rgba(15,26,58,.07),inset 0 0 0 1px rgba(15,26,58,.035);
 }
 .gen-sidebar-link:hover:not(.active){color:var(--text)}
-.gen-sidebar-link.active{color:var(--gs-accent,var(--acc));font-weight:800;font-size:.95rem;padding-left:1.05rem}
-.gen-sidebar-link.active::before{
-  content:'';position:absolute;left:.35rem;top:26%;bottom:26%;width:3px;border-radius:2px;
-  background:var(--gs-accent,var(--acc));
+.gen-sidebar-link:hover:not(.active) .gen-sidebar-ico{border-color:var(--gs-accent,var(--acc));color:var(--gs-accent,var(--acc))}
+.gen-sidebar-link.active{color:var(--gs-accent,var(--acc));font-weight:750}
+
+.gen-sidebar-ico{
+  width:30px;height:30px;flex-shrink:0;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface);border:1px solid var(--border);color:var(--muted2);
+  transition:background .22s var(--ease-out),color .22s var(--ease-out),border-color .22s;
 }
-.gen-sidebar-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;opacity:.45;transition:transform .25s var(--ease-out),opacity .25s}
-.gen-sidebar-link.active .gen-sidebar-dot{opacity:1;transform:scale(1.4)}
+.gen-sidebar-ico-svg{width:16px;height:16px}
+.gen-sidebar-link.active .gen-sidebar-ico{
+  background:var(--gs-accent,var(--acc));border-color:transparent;color:#fff;
+  box-shadow:0 4px 12px color-mix(in srgb,var(--gs-accent,var(--acc)) 30%,transparent);
+}
 .gen-sidebar-label{flex:1;min-width:0}
 .gen-sidebar-badge{font-size:.62rem;font-weight:800;color:var(--muted2);font-variant-numeric:tabular-nums lining-nums}
 .gen-sidebar-link.active .gen-sidebar-badge{color:var(--gs-accent,var(--acc))}
-@keyframes gs-in{to{opacity:1;transform:none}}
-@media (prefers-reduced-motion: reduce){
-  .gen-sidebar-link{animation:none;opacity:1;transform:none}
-  .gen-sidebar-pill{transition:none}
+
+.gen-sidebar-help{
+  margin-top:.9rem;display:flex;gap:.6rem;align-items:flex-start;
+  padding:.8rem .85rem;border-radius:13px;
+  background:var(--s2);border:1px solid var(--border);
 }
+.gen-sidebar-help-ico{
+  flex:0 0 auto;width:28px;height:28px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--acc-100);color:var(--acc);
+}
+.gen-sidebar-help-body{display:flex;flex-direction:column;gap:.15rem;min-width:0}
+.gen-sidebar-help-title{font-size:.76rem;font-weight:750;color:var(--text);letter-spacing:-.01em}
+.gen-sidebar-help-sub{font-size:.68rem;line-height:1.45;color:var(--muted2)}
+.gen-sidebar-help-sub em{font-style:normal;font-weight:650;color:var(--muted)}
 
 .gen-main{max-width:none;min-width:0}
-.gen-head{margin-bottom:1.6rem}
+.gen-head{margin-bottom:1.9rem;display:flex;align-items:center;justify-content:space-between;gap:2rem}
+.gen-head-text{flex:1;min-width:0}
 .gen-head-eyebrow{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em}
-.gen-head-title{margin-top:.4rem;font-size:clamp(1.7rem,3.2vw,2.3rem);font-weight:800;letter-spacing:-.03em;color:var(--text)}
-.gen-head-desc{margin-top:.55rem;max-width:40rem;font-size:.92rem;line-height:1.6;color:var(--muted)}
+.gen-head-title{margin-top:.4rem;font-size:clamp(1.7rem,3.2vw,2.35rem);font-weight:800;letter-spacing:-.03em;color:var(--text)}
+.gen-head-desc{margin-top:.6rem;max-width:42rem;font-size:.92rem;line-height:1.6;color:var(--muted)}
+
+/* ── Header illustration — stacked dashboard cards, gentle float + cursor drift ── */
+.hi-wrap{flex-shrink:0;width:270px;height:148px;position:relative}
+@media(max-width:1120px){.hi-wrap{display:none}}
+.hi-stack{position:absolute;inset:0;transform:translate3d(var(--il-x,0px),var(--il-y,0px),0);transition:transform .45s var(--ease-out);will-change:transform}
+.hi-card{position:absolute;border-radius:14px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow)}
+.hi-card-back{right:0;top:6px;width:172px;height:104px;transform:rotate(4deg);opacity:.65;background:color-mix(in srgb,var(--hi-accent) 7%,var(--surface))}
+.hi-card-mid{right:12px;top:20px;width:148px;height:66px;overflow:hidden}
+.hi-card-front{left:0;bottom:0;width:224px;padding:.7rem .85rem;display:flex;align-items:center;justify-content:space-between;gap:.7rem}
+.hi-spark{width:100%;height:100%;display:block}
+.hi-spark-line{fill:none;stroke:var(--hi-accent);stroke-width:2;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.hi-spark-fill{fill:color-mix(in srgb,var(--hi-accent) 13%,transparent);stroke:none}
+.hi-metric{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hi-metric-label{font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted2);white-space:nowrap}
+.hi-metric-value{font-size:1.02rem;font-weight:800;color:var(--text);letter-spacing:-.02em;white-space:nowrap}
+.hi-metric-delta{font-size:.62rem;font-weight:800;margin-top:1px}
+.hi-metric-delta.up{color:var(--good)}
+.hi-metric-delta.down{color:var(--bad)}
+.hi-donut{width:38px;height:38px;flex-shrink:0}
+.hi-donut-track{fill:none;stroke:var(--s2);stroke-width:5}
+.hi-donut-seg{fill:none;stroke-width:5;stroke-linecap:round}
+.hi-donut-seg.s1{stroke:var(--hi-accent)}
+.hi-donut-seg.s2{stroke:color-mix(in srgb,var(--hi-accent) 50%,#ffffff)}
+.hi-donut-seg.s3{stroke:color-mix(in srgb,var(--hi-accent) 22%,#ffffff)}
+@media(max-width:920px){.gen-head{gap:1rem}}
 
 /* ============================================================================
    UPLOAD FORM RESTYLE — applies to every generator page. Overrides a handful
@@ -283,7 +339,7 @@
    ========================================================================= */
 
 /* Client picker card — same left-accent card language as the source blocks. */
-.client-bar{border-radius:14px;border-left:3px solid var(--acc);margin-bottom:1.1rem}
+.client-bar{position:relative;z-index:40;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:1rem 1.2rem;margin-bottom:1.1rem}
 
 /* ── SearchSelect — custom searchable dropdown (replaces the native <select>) ── */
 .ssel{position:relative;min-width:min(260px,100%)}
@@ -329,63 +385,82 @@
 .howto-title{font-size:.78rem}
 .howto-title::before{background:var(--acc)}
 
-/* Step rail sits in its own soft card so "what's next" reads as a panel. */
-.step-rail{
-  background:var(--surface);border:1px solid var(--border);border-radius:14px;
-  box-shadow:var(--shadow-sm);padding:1.1rem 1.3rem;margin-bottom:1.5rem;
+/* Stepper sits in its own soft card so "what's next" reads as a panel. */
+.stepper{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  box-shadow:var(--shadow-sm);padding:.7rem;margin-bottom:1.6rem;
 }
 
 /* Each data source is a card, not a label + hairline over bare dropzones. */
 .source-block{
-  background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--acc);
-  border-radius:14px;box-shadow:var(--shadow-sm);
-  padding:.85rem 1.05rem .95rem;margin-bottom:.7rem;
-  transition:border-color .18s,box-shadow .18s;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;box-shadow:var(--shadow-sm);
+  padding:1.05rem 1.2rem 1.15rem;margin-bottom:.85rem;
+  transition:box-shadow .2s var(--ease-out);
 }
 .source-block:hover{box-shadow:var(--shadow)}
 .panel .source-block .source-label.shopee-label{color:var(--shopee)}
-.source-block:has(.shopee-label){border-left-color:var(--shopee)}
-.source-header{margin-bottom:.55rem}
+.source-header{margin-bottom:.6rem}
 .source-label{font-size:.72rem}
 .source-label::after{display:none}            /* drop the trailing hairline */
 .source-block .sec-badge{background:var(--s2);border-color:var(--border)}
 
-/* Dropzones: one compact row (icon · label/hint · rowcount). A fraction of
-   the old stacked card's height; drag-drop + click still cover the whole row. */
+/* ── Upload dropzones ─────────────────────────────────────────────────────
+   Compact card: a small circular icon + a three-tier text column. Neutral
+   blue on every platform — an orange dropzone reads like a warning — so
+   Shopee/TikTok keep their accent on the section label only. Click and
+   drag-drop still cover the whole card. */
 .dz{
   flex-direction:row;align-items:center;justify-content:flex-start;text-align:left;
-  min-height:0;padding:.62rem .85rem;gap:.7rem;border-radius:12px;border-width:1.5px;
-  border-color:color-mix(in srgb,var(--acc) 34%,var(--border));
-  background:color-mix(in srgb,var(--acc) 5%,var(--surface));
+  min-height:0;padding:.85rem .95rem;gap:.8rem;
+  border:1.5px solid var(--border);border-radius:14px;
+  background:var(--surface);box-shadow:var(--shadow-sm);
+  transition:border-color .2s var(--ease-out),background .2s var(--ease-out),box-shadow .2s var(--ease-out);
 }
-.dz .dz-icon{font-size:1rem;flex-shrink:0;width:1.5rem;height:1.5rem;display:flex;align-items:center;justify-content:center;border-radius:7px;background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--acc)}
+.dz .dz-icon{
+  flex-shrink:0;width:2.15rem;height:2.15rem;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:.95rem;line-height:1;
+  background:var(--acc-100);color:var(--acc);
+  transition:background .2s var(--ease-out),color .2s var(--ease-out),transform .2s var(--ease-out);
+}
 .dz-main{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
-.dz .dz-tag{font-size:.74rem;font-weight:700;color:var(--text);text-transform:none;letter-spacing:0}
-.dz-hint{font-size:.66rem;color:var(--muted);font-weight:500}
-.dz .dz-file{margin:0;padding:0;border:0;background:none;font-size:.66rem;font-weight:600;color:var(--acc);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dz .dz-tag{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted2)}
+.dz-hint{font-size:.8rem;font-weight:650;color:var(--text);letter-spacing:-.01em}
+.dz-sub{font-size:.66rem;color:var(--muted2);font-weight:500}
+.dz .dz-file{margin:0;padding:0;border:0;background:none;font-size:.7rem;font-weight:650;color:var(--acc);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dz .dz-rows{flex-shrink:0;font-size:.62rem;color:var(--muted);font-weight:700;background:var(--s2);border-radius:6px;padding:.15rem .45rem}
-.dz:hover,.dz.drag{border-color:var(--acc);background:var(--acc-100)}
-.dz.loaded{border-style:solid;border-color:color-mix(in srgb,var(--acc) 55%,var(--border));background:color-mix(in srgb,var(--acc) 8%,var(--surface))}
-.dz.loaded .dz-icon{background:var(--acc);color:#fff;font-weight:800}
-/* A lone row (single-file blocks like Meta / CPAS) shouldn't span the whole card. */
-.source-block > .dz{max-width:460px}
-.dz.shopee-dz{border-color:color-mix(in srgb,var(--shopee) 34%,var(--border));background:color-mix(in srgb,var(--shopee) 5%,var(--surface))}
-.dz.shopee-dz .dz-icon{background:color-mix(in srgb,var(--shopee) 13%,transparent);color:var(--shopee)}
-.dz.shopee-dz .dz-file{color:var(--shopee)}
-.dz.shopee-dz:hover,.dz.shopee-dz.drag{border-color:var(--shopee);background:var(--shopee-100)}
-.dz.shopee-dz.loaded{border-color:color-mix(in srgb,var(--shopee) 55%,var(--border));background:color-mix(in srgb,var(--shopee) 8%,var(--surface))}
-.dz.shopee-dz.loaded .dz-icon{background:var(--shopee);color:#fff}
+.dz:hover,.dz.drag{border-color:var(--acc);background:var(--acc-100);box-shadow:var(--shadow)}
+.dz:hover .dz-icon,.dz.drag .dz-icon{background:var(--acc);color:#fff;transform:scale(1.06)}
+.dz.loaded{border-style:solid;border-color:color-mix(in srgb,var(--acc) 45%,var(--border));background:color-mix(in srgb,var(--acc) 6%,var(--surface))}
+.dz.loaded .dz-icon{background:var(--acc);color:#fff}
+/* Neutralise the leftover orange treatment on Shopee dropzones. */
+.dz.shopee-dz.loaded{border-color:color-mix(in srgb,var(--acc) 45%,var(--border));background:color-mix(in srgb,var(--acc) 6%,var(--surface))}
+.dz.shopee-dz.loaded .dz-file{color:var(--acc);background:none;border:0}
 
-/* Two-up file rows sit in a tidy responsive grid. */
-.dz-grid-4,.dz-grid{gap:.6rem}
-@media(max-width:640px){.dz-grid,.dz-grid-4{grid-template-columns:1fr}}
+/* ── Period pairs: two compact cards, centred — never a full-width stretch ── */
+.dz-grid,.dz-grid-4{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,300px));
+  justify-content:center;gap:20px;
+}
+/* A lone file (Referensi Kategori, etc.) — one wider card, centred. */
+.dz-grid:has(> .dz:only-child),
+.dz-grid-4:has(> .dz:only-child){grid-template-columns:minmax(0,640px)}
+/* Columns that carry the saved-period switcher need the full width. */
+.dz-grid:has(.slot-src-tabs),
+.dz-grid-4:has(.slot-src-tabs){grid-template-columns:repeat(2,minmax(0,1fr));justify-content:stretch}
+/* A single file in its own source-block (Meta, CPAS): centred and capped. */
+.source-block > .dz{max-width:660px;margin-inline:auto}
+@media(max-width:680px){
+  .dz-grid,.dz-grid-4,
+  .dz-grid:has(.slot-src-tabs),.dz-grid-4:has(.slot-src-tabs){grid-template-columns:minmax(0,1fr)}
+}
 
 /* "Data tambahan (opsional)" — the 7 optional Shopee upload cards fold away. */
 .opt-group{
-  border:1.5px solid var(--border);border-left:3px solid var(--shopee-300);border-radius:14px;
+  border:1px solid var(--border);border-radius:16px;
   background:var(--surface);box-shadow:var(--shadow-sm);margin-bottom:.7rem;overflow:hidden;
 }
-.opt-group[open]{border-left-color:var(--shopee)}
+.opt-group[open]{border-color:var(--shopee-300)}
 .opt-group-head{
   display:grid;grid-template-columns:1fr auto;gap:.1rem .8rem;align-items:center;
   padding:.85rem 1.05rem;cursor:pointer;list-style:none;user-select:none;
@@ -635,7 +710,7 @@
   .gen-wrap{grid-template-columns:1fr;padding-bottom:4rem}
   .gen-sidebar{
     position:static;display:flex;gap:.4rem;overflow-x:auto;
-    padding-bottom:.4rem;scrollbar-width:thin;
+    padding:0 0 .4rem;background:none;border:0;border-radius:0;box-shadow:none;scrollbar-width:thin;
   }
   .gen-sidebar-title{display:none}
   .gen-sidebar-nav{flex-direction:row;gap:.4rem}
@@ -644,6 +719,7 @@
   .gen-sidebar-link.active::before{left:.3rem;top:22%;bottom:22%}
   .gen-sidebar-badge{display:none}
   .gen-sidebar-pill{display:none}
+  .gen-sidebar-help{display:none}
 }
 @media(max-width:620px){
   .site-brand-name{display:none}
