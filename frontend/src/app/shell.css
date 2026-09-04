@@ -805,3 +805,11 @@
   .site-header-spacer{display:none}
   .home-cta-row .btn{flex:1 1 auto;justify-content:center}
 }
+
+/* ── Meta: Industri & Objective — two dropdowns in the one selector card ─── */
+.dual-select{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.75rem}
+.dual-select-field{display:flex;flex-direction:column;gap:.3rem;flex:1 1 220px;min-width:0}
+.dual-select-field > span:first-child{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted2)}
+.dual-select-hint{font-size:.64rem;color:var(--muted2);font-weight:500;line-height:1.35}
+.howto-col-req{font-weight:750;color:var(--text)}
+.howto-col-note{font-weight:400;color:var(--muted);font-size:.9em}
