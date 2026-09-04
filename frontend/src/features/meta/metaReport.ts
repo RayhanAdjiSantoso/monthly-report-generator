@@ -8,6 +8,7 @@ import {
   buildBlendedNonBoostDef,
   buildCprRow,
   buildKPI,
+  buildLabeledAggRow,
   buildObjectiveOverviewDef,
   classifyMetaObjective,
   detectMetaObjectiveCol,
@@ -214,8 +215,14 @@ export interface BuildMetaReportInput {
   // section, no explicit "off" state needed.
   cpasRows: SheetRow[] | null;
   cpasHeaders: string[];
+  // B2B / Retail — manual context (not in the Meta export). Not used to pick
+  // metrics any more; kept for the saved report config.
   industry: MetaIndustry;
   customResultsCol: string | null;
+  // The Non-Boost headline objective for a file with no "Objective" column
+  // (Sales → Purchases/CpP, Leads → Leads/CpL, …). Ignored when the file
+  // carries an Objective column — the lane is split per objective instead.
+  objective?: MetaObjectiveKey | null;
   // When metaRows came from Meta's per-day breakdown export (a "Day" column
   // instead of "Month"), old/cur are picked by these explicit date ranges
   // instead of relying on Meta's own month-bucket boundaries — see
@@ -229,7 +236,7 @@ export interface BuildMetaReportInput {
 // cross-platform Summary Overview feed (platformState.meta) is intentionally
 // not built here — that's designed together with the other platforms in the
 // Business/Summary Overview checkpoint.
-export function buildMetaReport({ metaRows, metaHeaders, cpasRows, cpasHeaders, industry, customResultsCol, dayRanges }: BuildMetaReportInput): MetaReport {
+export function buildMetaReport({ metaRows, metaHeaders, cpasRows, cpasHeaders, industry, customResultsCol, objective, dayRanges }: BuildMetaReportInput): MetaReport {
   const mMonthCol = findCol(metaRows, ['month']);
   const mDayCol = findCol(metaRows, ['day']);
   const mCampCol = findCol(metaRows, ['campaign']);
@@ -346,22 +353,35 @@ export function buildMetaReport({ metaRows, metaHeaders, cpasRows, cpasHeaders, 
   const nbGroups = hasNonBoost ? groupNonBoostByObjective(mNonOld, mNonCur, metaHeaders, mCampCol) : null;
 
   if (nbGroups && nbGroups.multi) {
-    // Multi-objective: a blended headline on top, one sub-section per objective.
+    // Multi-objective: a blended headline + per-objective spend split on top,
+    // then one full sub-section per objective.
     const blendedDef = buildBlendedNonBoostDef(mAllCols);
     const blendedKpiRows = buildKPI(mNonOld, mNonCur, blendedDef.cols);
     const blendedOvRows: KpiRowDisplay[] = toDisplayRows(blendedKpiRows);
+    // "Amount Spent · Sales / · Leads / …" — the split the user actually asked
+    // for, right under the blended total so every figure is labelled.
+    const spendSplitRows = nbGroups.groups
+      .map((g) => buildLabeledAggRow(`Amount Spent · ${g.label}`, mSpentCol ?? null, g.old, g.cur))
+      .filter((r): r is NonNullable<typeof r> => Boolean(r));
+    const spentRowIdx = blendedOvRows.findIndex((r) => (r as KpiRowDisplay & { col?: string }).col === mSpentCol);
+    if (spentRowIdx >= 0) blendedOvRows.splice(spentRowIdx + 1, 0, ...spendSplitRows);
+    else blendedOvRows.unshift(...spendSplitRows);
     const blendedCpr = buildCprRow(blendedDef.cprPair, mNonOld, mNonCur);
     if (blendedCpr) blendedOvRows.push(blendedCpr);
     report.nonBoost = { overviewRows: blendedOvRows, detailedRows: toDisplayRows(buildKPI(mNonOld, mNonCur, mAllCols)), allCols: mAllCols };
     report.nonBoostObjectiveSource = nbGroups.source;
     metaKpis.push(...toSummaryRows(blendedKpiRows, 'Non-Boost · Blended'));
     if (blendedCpr) metaKpis.push(...toSummaryRows([blendedCpr], 'Non-Boost · Blended'));
+    metaKpis.push(...spendSplitRows.map((r) => toSummaryKpi({ ...r, label: `Non-Boost · Blended · ${r.label}` })));
     if (mSpentCol) metaSpend.nonboost = { old: agg(mNonOld, mSpentCol), cur: agg(mNonCur, mSpentCol) };
 
     report.nonBoostSegments = nbGroups.groups.map((g) => {
       const d = buildObjectiveOverviewDef(g.key, mAllCols, g.label);
       const segKpiRows = buildKPI(g.old, g.cur, d.cols);
-      const segOvRows: KpiRowDisplay[] = toDisplayRows(segKpiRows);
+      // Make the Amount Spent row say which objective it is.
+      const segOvRows: KpiRowDisplay[] = toDisplayRows(segKpiRows).map((r) =>
+        mSpentCol && (r as DetailedRow).col === mSpentCol ? { ...r, label: `Amount Spent (${g.label})` } : r,
+      );
       const segCpr = buildCprRow(d.cprPair, g.old, g.cur);
       if (segCpr) segOvRows.push(segCpr);
       metaKpis.push(...toSummaryRows(segKpiRows, `Non-Boost · ${g.label}`));
@@ -375,13 +395,17 @@ export function buildMetaReport({ metaRows, metaHeaders, cpasRows, cpasHeaders, 
       };
     });
   } else if (hasNonBoost) {
-    // Single Non-Boost section. Headline = the industry pick, or — if the file
-    // has an objective column with just one objective in it — that objective.
-    const soleObj = nbGroups && !nbGroups.multi ? buildObjectiveOverviewDef(nbGroups.groups[0].key, mAllCols) : null;
-    const mainDef = soleObj ?? ovDefs.main;
+    // Single Non-Boost section. Headline from: the file's sole objective, else
+    // the Objective dropdown, else (legacy) the industry pick.
+    const soleKey = nbGroups && !nbGroups.multi ? nbGroups.groups[0].key : null;
+    const objKey = soleKey ?? objective ?? null;
+    const mainDef = objKey ? buildObjectiveOverviewDef(objKey, mAllCols) : ovDefs.main;
     if (mainDef && mainDef.cols.length) {
+      const objLabel = objKey ? META_OBJECTIVE_DEFS[objKey].label : null;
       const mainKpiRows = buildKPI(mNonOld, mNonCur, mainDef.cols);
-      const mainOvRows: KpiRowDisplay[] = toDisplayRows(mainKpiRows);
+      const mainOvRows: KpiRowDisplay[] = toDisplayRows(mainKpiRows).map((r) =>
+        objLabel && mSpentCol && (r as DetailedRow).col === mSpentCol ? { ...r, label: `Amount Spent (${objLabel})` } : r,
+      );
       const mainCpr = buildCprRow(mainDef.cprPair, mNonOld, mNonCur);
       if (mainCpr) mainOvRows.push(mainCpr);
       report.nonBoost = { overviewRows: mainOvRows, detailedRows: toDisplayRows(buildKPI(mNonOld, mNonCur, mAllCols)), allCols: mAllCols };

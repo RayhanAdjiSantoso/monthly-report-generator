@@ -1238,30 +1238,39 @@ export function getOverviewDefs(industry: MetaIndustry, allCols: string[], custo
 }
 
 // ══════════════════════════════════════════════════════
-// PER-OBJECTIVE SPLIT — when one ad account runs several objectives at once
-// (Purchase + Leads + Traffic …) the Non-Boost lane can't be summed into one
-// "Cost per X": the numerator would mix every objective's spend. If the
-// export carries a per-campaign objective (a "Result type" / "Result
-// indicator" / "Objective" column) — or the campaign names encode it — the
-// lane is split into one sub-section per objective, each with its own
-// headline metric, plus a blended row on top.
+// PER-OBJECTIVE SPLIT — one ad account often runs several objectives at once
+// (Sales + Leads + Traffic …). Summing the whole Non-Boost lane into one
+// "Cost per X" mixes every objective's spend into the numerator.
+//
+// The split is driven by the export's "Objective" column (always filled, one
+// value per row). Values follow Meta's campaign-objective enums — the current
+// ODAX names (OUTCOME_SALES, OUTCOME_LEADS…) and the pre-2022 names
+// (CONVERSIONS, LINK_CLICKS…), both mapped here. When the file has no
+// Objective column the campaign names are keyword-matched as a fallback.
+//
+// (The separate "Result type" column — "Website purchases", "Adds to cart",
+// "Instagram profile visits"… — is per-event detail and only partly filled,
+// so it is NOT used for the split. It could later drive a breakdown *within*
+// one objective, but that's out of scope here.)
 // ══════════════════════════════════════════════════════
 
-export type MetaObjectiveKey =
-  | 'purchase'
-  | 'leads'
-  | 'message'
-  | 'link_click'
-  | 'landing_page'
-  | 'profile_visit'
-  | 'video_view'
-  | 'engagement'
-  | 'reach'
-  | 'app'
-  | 'other';
+export type MetaObjectiveKey = 'sales' | 'leads' | 'traffic' | 'engagement' | 'awareness' | 'app' | 'other';
+
+// The six pickable objectives (Meta's ODAX set), for the Objective dropdown.
+export const META_OBJECTIVE_CHOICES: { key: Exclude<MetaObjectiveKey, 'other'>; label: string }[] = [
+  { key: 'awareness', label: 'Awareness' },
+  { key: 'traffic', label: 'Traffic' },
+  { key: 'engagement', label: 'Engagement' },
+  { key: 'leads', label: 'Leads' },
+  { key: 'app', label: 'App Promotion' },
+  { key: 'sales', label: 'Sales' },
+];
 
 interface MetaObjectiveDef {
   label: string;
+  // Meta objective-enum values that map to this key (matched case-insensitively,
+  // exact or as a prefix so "OUTCOME_SALES" and "OUTCOME_SALES_..." both hit).
+  enums: string[];
   // Headline columns to show, one keyword-set per slot (first hit wins).
   headline: string[][];
   cprLabel: string;
@@ -1270,68 +1279,51 @@ interface MetaObjectiveDef {
 }
 
 export const META_OBJECTIVE_DEFS: Record<MetaObjectiveKey, MetaObjectiveDef> = {
-  purchase: {
-    label: 'Purchase',
+  sales: {
+    label: 'Sales',
+    enums: ['OUTCOME_SALES', 'CONVERSIONS', 'PRODUCT_CATALOG_SALES'],
     headline: [['purchases'], ['purchases conversion value', 'conversion value'], ['purchase roas', 'roas']],
     cprLabel: 'Cost per Purchase',
     cprDenom: ['purchases'],
   },
   leads: {
     label: 'Leads',
+    enums: ['OUTCOME_LEADS', 'LEAD_GENERATION'],
     headline: [['leads', 'results']],
     cprLabel: 'Cost per Lead',
     cprDenom: ['leads', 'results'],
   },
-  message: {
-    label: 'Message',
-    headline: [['messaging conversations started', 'total messages', 'messaging conversations']],
-    cprLabel: 'Cost per Message',
-    cprDenom: ['messaging conversations started', 'total messages', 'messaging conversations'],
-  },
-  link_click: {
+  traffic: {
     label: 'Traffic',
-    headline: [['link clicks', 'outbound clicks', 'clicks (all)']],
+    enums: ['OUTCOME_TRAFFIC', 'LINK_CLICKS'],
+    headline: [['link clicks', 'outbound clicks', 'clicks (all)'], ['landing page views']],
     cprLabel: 'Cost per Link Click',
     cprDenom: ['link clicks', 'outbound clicks', 'clicks (all)'],
   },
-  landing_page: {
-    label: 'Landing Page Views',
-    headline: [['landing page views']],
-    cprLabel: 'Cost per Landing Page View',
-    cprDenom: ['landing page views'],
-  },
-  profile_visit: {
-    label: 'Profile Visits',
-    headline: [['profile visit', 'instagram profile visit']],
-    cprLabel: 'Cost per Profile Visit',
-    cprDenom: ['profile visit', 'instagram profile visit'],
-  },
-  video_view: {
-    label: 'Video Views',
-    headline: [['thruplays', '3-second video plays', 'video plays', 'video views']],
-    cprLabel: 'Cost per ThruPlay',
-    cprDenom: ['thruplays', 'video plays'],
-  },
   engagement: {
     label: 'Engagement',
-    headline: [['post engagements', 'page engagement', 'post reactions']],
+    enums: ['OUTCOME_ENGAGEMENT', 'POST_ENGAGEMENT', 'VIDEO_VIEWS', 'PAGE_LIKES', 'EVENT_RESPONSES', 'MESSAGES'],
+    headline: [['post engagements', 'page engagement', 'post reactions'], ['thruplays', 'video plays', 'video views']],
     cprLabel: 'Cost per Engagement',
     cprDenom: ['post engagements', 'page engagement'],
   },
-  reach: {
+  awareness: {
     label: 'Awareness',
+    enums: ['OUTCOME_AWARENESS', 'BRAND_AWARENESS', 'REACH'],
     headline: [['reach'], ['impressions']],
     cprLabel: 'Cost per Result',
     cprDenom: [],
   },
   app: {
-    label: 'App Installs',
+    label: 'App Promotion',
+    enums: ['OUTCOME_APP_PROMOTION', 'APP_INSTALLS', 'MOBILE_APP_INSTALLS', 'MOBILE_APP_ENGAGEMENT'],
     headline: [['app installs', 'mobile app installs']],
     cprLabel: 'Cost per App Install',
     cprDenom: ['app installs', 'mobile app installs'],
   },
   other: {
     label: 'Objective Lain',
+    enums: [],
     headline: [['results']],
     cprLabel: 'Cost per Result',
     cprDenom: ['results'],
@@ -1339,55 +1331,77 @@ export const META_OBJECTIVE_DEFS: Record<MetaObjectiveKey, MetaObjectiveDef> = {
 };
 
 // The order sub-sections render in (independent of Map insertion order).
-export const META_OBJECTIVE_ORDER: MetaObjectiveKey[] = [
-  'purchase',
-  'leads',
-  'message',
-  'link_click',
-  'landing_page',
-  'video_view',
-  'engagement',
-  'app',
-  'profile_visit',
-  'reach',
-  'other',
-];
+export const META_OBJECTIVE_ORDER: MetaObjectiveKey[] = ['sales', 'leads', 'traffic', 'engagement', 'app', 'awareness', 'other'];
 
-// A "Result type" / "Result indicator" / "Objective" / "Optimization goal"
-// column, if the export has one. `null` when it doesn't.
+// The "Objective" column, if the export has one. Matches "Objective" /
+// "Campaign objective" exactly (not "Result type" — see the block comment).
 export function detectMetaObjectiveCol(headers: string[]): string | null {
   return (
     headers.find((h) => {
       const lc = h.trim().toLowerCase();
-      return (
-        lc === 'result type' ||
-        lc === 'result indicator' ||
-        lc === 'objective' ||
-        lc === 'campaign objective' ||
-        lc.includes('result type') ||
-        lc.includes('result indicator') ||
-        lc.includes('optimization goal') ||
-        lc.includes('optimisation goal')
-      );
+      return lc === 'objective' || lc === 'campaign objective' || lc === 'campaign objectives';
     }) ?? null
   );
 }
 
-// Maps a raw objective / result-type / campaign-name string to a known key.
+// Maps a raw "Objective" cell value (Meta enum or human label), or a campaign
+// name, to a known objective key.
 export function classifyMetaObjective(raw: string): MetaObjectiveKey {
-  const lc = (raw || '').toLowerCase();
-  if (!lc.trim()) return 'other';
-  if (/\blead|leadgen|lead gen|onsite_conversion\.lead|instant_form|\bcpl\b/.test(lc)) return 'leads';
-  if (/messag|conversation|whatsapp\b|\bwa\b|onsite_conversion\.messaging/.test(lc)) return 'message';
-  if (/purchase|checkout|fb_pixel_purchase|omni_purchase|\bsales\b|catalog_sales|conversions?\b|\broas\b/.test(lc)) return 'purchase';
-  if (/landing_page|landing page|\blpv\b/.test(lc)) return 'landing_page';
-  if (/link_click|link click|outbound_click|\btraffic\b/.test(lc)) return 'link_click';
-  if (/profile_visit|profile visit|ig_profile|\bpv\b/.test(lc)) return 'profile_visit';
-  if (/thruplay|video_view|video view|\bvv\b|\bvideo\b/.test(lc)) return 'video_view';
-  if (/post_engagement|page_engagement|engagement|\bpe\b|reactions?\b/.test(lc)) return 'engagement';
-  if (/app_install|mobile_app|app install/.test(lc)) return 'app';
-  if (/reach|impression|awareness|\bbrand\b/.test(lc)) return 'reach';
+  const s = (raw || '').trim();
+  if (!s) return 'other';
+  const up = s.toUpperCase().replace(/[\s-]+/g, '_');
+  for (const key of META_OBJECTIVE_ORDER) {
+    if (META_OBJECTIVE_DEFS[key].enums.some((e) => up === e || up.startsWith(e + '_'))) return key;
+  }
+  // Human labels / campaign-name keywords.
+  const lc = s.toLowerCase();
+  if (/\blead|leadgen|lead gen|instant_form|\bcpl\b/.test(lc)) return 'leads';
+  if (/purchase|checkout|\bsales\b|catalog[_ ]sales|conversions?\b|\broas\b/.test(lc)) return 'sales';
+  if (/link[_ ]click|outbound[_ ]click|landing[_ ]page|\btraffic\b|\blpv\b/.test(lc)) return 'traffic';
+  if (/app[_ ]install|mobile[_ ]app|app promotion/.test(lc)) return 'app';
+  if (/reach|impression|awareness|\bbrand\b/.test(lc)) return 'awareness';
+  if (/engagement|post[_ ]reaction|video[_ ]view|thruplay|messag|conversation|page[_ ]like/.test(lc)) return 'engagement';
   return 'other';
+}
+
+// The objective that spent the most in a set of rows — used to pre-fill the
+// Objective dropdown when the file carries an Objective column.
+export function dominantMetaObjective(rows: SheetRow[], objCol: string, spentCol: string | null): MetaObjectiveKey | null {
+  if (!rows.length) return null;
+  const spend = new Map<MetaObjectiveKey, number>();
+  for (const r of rows) {
+    const k = classifyMetaObjective(String(r[objCol] ?? ''));
+    const s = spentCol ? Number(String(r[spentCol] ?? '0').replace(/[^0-9.-]/g, '')) || 0 : 1;
+    spend.set(k, (spend.get(k) ?? 0) + s);
+  }
+  let best: MetaObjectiveKey | null = null;
+  let bestVal = -1;
+  for (const [k, v] of spend) {
+    if (v > bestVal) {
+      best = k;
+      bestVal = v;
+    }
+  }
+  return best;
+}
+
+// A metric row with a caller-supplied label (not derived from the column
+// name) — used for the "Amount Spent · Sales / · Leads / …" split rows on the
+// blended card.
+export interface LabeledMetricRow {
+  label: string;
+  old: string;
+  cur: string;
+  delta: string;
+  cls: DeltaClassName;
+}
+
+export function buildLabeledAggRow(label: string, col: string | null, old: SheetRow[], cur: SheetRow[]): LabeledMetricRow | null {
+  if (!col) return null;
+  const v1 = agg(old, col);
+  const v2 = agg(cur, col);
+  const { deltaNum, deltaStr } = v1 !== null && v2 !== null ? computeDelta(v1, v2) : { deltaNum: null, deltaStr: '—' };
+  return { label, old: fmt(v1, col), cur: fmt(v2, col), delta: formatDeltaID(deltaNum, deltaStr), cls: metaDeltaClass(deltaNum, col) };
 }
 
 export interface ObjectiveOverviewDef {
