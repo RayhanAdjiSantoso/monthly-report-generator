@@ -24,6 +24,8 @@
 // re-tested against that change, so the flag is left as-is.)
 // ══════════════════════════════════════════════════════
 
+import { handleStaleChunk } from './staleChunk';
+
 export function sanitizeFilename(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
 }
@@ -112,6 +114,7 @@ export async function exportElementToPDF(rootEl: HTMLElement | null, filename: s
     doc.save(filename);
   } catch (err) {
     console.error(err);
+    if (handleStaleChunk(err)) return;
     alert('Gagal membuat PDF: ' + (err as Error).message);
   } finally {
     document.body.classList.remove('pdf-export-mode');
@@ -147,6 +150,7 @@ export async function downloadSectionPNG(block: HTMLElement): Promise<void> {
     link.click();
   } catch (err) {
     console.error(err);
+    if (handleStaleChunk(err)) return;
     alert('Gagal membuat gambar: ' + (err as Error).message);
   } finally {
     document.body.classList.remove('pdf-export-mode');
