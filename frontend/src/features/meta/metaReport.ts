@@ -230,6 +230,17 @@ export interface BuildMetaReportInput {
   dayRanges?: { old: DateRange; cur: DateRange } | null;
 }
 
+// "Results" / "Cost per result" carry a global "(blended)" tag (see
+// displayName in lib/meta.ts) because that raw column normally sums every
+// campaign's own objective together. Once a card is scoped to one objective
+// (a per-objective segment, or a single section headlined by one), those
+// numbers aren't blended any more — the section heading already says which
+// objective they're for — so the tag reads as a contradiction. Strip it
+// there; the Blended card keeps it, since that one really is blended.
+function deblend<T extends { label: string }>(rows: T[]): T[] {
+  return rows.map((r) => (/\(blended\)/i.test(r.label) ? { ...r, label: r.label.replace(/\s*\(blended\)\s*/gi, '').trim() } : r));
+}
+
 // Ported from the Meta branch of the original generate() — builds every
 // section's data (Overview/Detailed rows, Age/Gender breakdown datasets) so
 // the MetaTab component can render them as JSX instead of HTML strings. The
@@ -378,9 +389,10 @@ export function buildMetaReport({ metaRows, metaHeaders, cpasRows, cpasHeaders, 
     report.nonBoostSegments = nbGroups.groups.map((g) => {
       const d = buildObjectiveOverviewDef(g.key, mAllCols, g.label);
       const segKpiRows = buildKPI(g.old, g.cur, d.cols);
-      // Make the Amount Spent row say which objective it is.
-      const segOvRows: KpiRowDisplay[] = toDisplayRows(segKpiRows).map((r) =>
-        mSpentCol && (r as DetailedRow).col === mSpentCol ? { ...r, label: `Amount Spent (${g.label})` } : r,
+      // Make the Amount Spent row say which objective it is, and drop the
+      // "(blended)" tag now that Results/Cost per result is scoped to it.
+      const segOvRows: KpiRowDisplay[] = deblend(
+        toDisplayRows(segKpiRows).map((r) => (mSpentCol && (r as DetailedRow).col === mSpentCol ? { ...r, label: `Amount Spent (${g.label})` } : r)),
       );
       const segCpr = buildCprRow(d.cprPair, g.old, g.cur);
       if (segCpr) segOvRows.push(segCpr);
@@ -389,7 +401,7 @@ export function buildMetaReport({ metaRows, metaHeaders, cpasRows, cpasHeaders, 
       return {
         key: g.key,
         label: g.label,
-        overview: { overviewRows: segOvRows, detailedRows: toDisplayRows(buildKPI(g.old, g.cur, mAllCols)), allCols: mAllCols },
+        overview: { overviewRows: segOvRows, detailedRows: deblend(toDisplayRows(buildKPI(g.old, g.cur, mAllCols))), allCols: mAllCols },
         spendOld: mSpentCol ? agg(g.old, mSpentCol) : null,
         spendCur: mSpentCol ? agg(g.cur, mSpentCol) : null,
       };
@@ -403,12 +415,19 @@ export function buildMetaReport({ metaRows, metaHeaders, cpasRows, cpasHeaders, 
     if (mainDef && mainDef.cols.length) {
       const objLabel = objKey ? META_OBJECTIVE_DEFS[objKey].label : null;
       const mainKpiRows = buildKPI(mNonOld, mNonCur, mainDef.cols);
-      const mainOvRows: KpiRowDisplay[] = toDisplayRows(mainKpiRows).map((r) =>
+      let mainOvRows: KpiRowDisplay[] = toDisplayRows(mainKpiRows).map((r) =>
         objLabel && mSpentCol && (r as DetailedRow).col === mSpentCol ? { ...r, label: `Amount Spent (${objLabel})` } : r,
       );
+      let mainDetailedRows = toDisplayRows(buildKPI(mNonOld, mNonCur, mAllCols));
+      // Objective-headlined (not the legacy industry fallback) — same
+      // de-blending as the per-objective segments above.
+      if (objKey) {
+        mainOvRows = deblend(mainOvRows);
+        mainDetailedRows = deblend(mainDetailedRows);
+      }
       const mainCpr = buildCprRow(mainDef.cprPair, mNonOld, mNonCur);
       if (mainCpr) mainOvRows.push(mainCpr);
-      report.nonBoost = { overviewRows: mainOvRows, detailedRows: toDisplayRows(buildKPI(mNonOld, mNonCur, mAllCols)), allCols: mAllCols };
+      report.nonBoost = { overviewRows: mainOvRows, detailedRows: mainDetailedRows, allCols: mAllCols };
       metaKpis.push(...toSummaryRows(mainKpiRows, 'Non-Boost Post'));
       if (mainCpr) metaKpis.push(...toSummaryRows([mainCpr], 'Non-Boost Post'));
       if (mSpentCol) metaSpend.nonboost = { old: agg(mNonOld, mSpentCol), cur: agg(mNonCur, mSpentCol) };
