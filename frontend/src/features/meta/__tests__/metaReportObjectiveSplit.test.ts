@@ -185,3 +185,42 @@ describe('buildMetaReport — no Objective column', () => {
     expect(cpr!.cur).toBe('Rp107.692'); // 28,000,000 / 260
   });
 });
+
+describe('buildMetaReport — "(blended)" tag only where it\'s still accurate', () => {
+  // "Results" / "Cost per result" carry a global "(blended)" tag because that
+  // column normally sums every campaign's own objective together. A real
+  // export can have Sales campaigns with no dedicated "Purchases" column at
+  // all — headline falls through to just Amount Spent, but "Results" is
+  // still there to add via "+ Tambah metrik". Once it's scoped to one
+  // objective's own campaigns, "(blended)" is no longer true.
+  const H = ['Campaign name', 'Month', 'Objective', 'Amount spent (IDR)', 'Results', 'Cost per result', 'Link clicks'];
+  const mk = (m: string, camp: string, obj: string, spent: number, results: number): SheetRow => ({
+    'Campaign name': camp,
+    Month: m,
+    Objective: obj,
+    'Amount spent (IDR)': spent,
+    Results: results,
+    'Cost per result': results ? Math.round(spent / results) : 0,
+    'Link clicks': 0,
+  });
+  const rows = [
+    mk('2026-06', 'BRND | Sales', 'OUTCOME_SALES', 10_000_000, 50),
+    mk('2026-06', 'BRND | Traffic', 'LINK_CLICKS', 5_000_000, 3000),
+    mk('2026-07', 'BRND | Sales', 'OUTCOME_SALES', 11_000_000, 55),
+    mk('2026-07', 'BRND | Traffic', 'LINK_CLICKS', 6_000_000, 3600),
+  ];
+  const report = buildMetaReport({ metaRows: rows, metaHeaders: H, cpasRows: null, cpasHeaders: [], industry: null, customResultsCol: null, objective: null, dayRanges: null });
+
+  it('the Blended card keeps the tag — it really is blended there', () => {
+    const r = report.nonBoost!.overviewRows.find((r) => r.label.startsWith('Results'));
+    expect(r!.label).toBe('Results (blended)');
+  });
+
+  it('a Sales segment with no dedicated Purchases column shows plain "Results" / "Cost per Result"', () => {
+    const sales = report.nonBoostSegments!.find((s) => s.key === 'sales')!;
+    const results = sales.overview.detailedRows.find((r) => r.col === 'Results');
+    const cpr = sales.overview.detailedRows.find((r) => r.col === 'Cost per result');
+    expect(results!.label).toBe('Results');
+    expect(cpr!.label).toBe('Cost per Result');
+  });
+});
