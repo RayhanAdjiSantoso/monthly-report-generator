@@ -318,12 +318,11 @@
 .hi-spark{width:100%;height:100%;display:block}
 .hi-spark-line{fill:none;stroke:var(--hi-accent);stroke-width:2;stroke-linecap:round;vector-effect:non-scaling-stroke}
 .hi-spark-fill{fill:color-mix(in srgb,var(--hi-accent) 13%,transparent);stroke:none}
-.hi-metric{display:flex;flex-direction:column;gap:2px;min-width:0}
-.hi-metric-label{font-size:.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted2);white-space:nowrap}
-.hi-metric-value{font-size:1.02rem;font-weight:800;color:var(--text);letter-spacing:-.02em;white-space:nowrap}
-.hi-metric-delta{font-size:.62rem;font-weight:800;margin-top:1px}
-.hi-metric-delta.up{color:var(--good)}
-.hi-metric-delta.down{color:var(--bad)}
+.hi-bars{display:flex;flex-direction:column;gap:6px;min-width:0}
+.hi-bar{display:block;border-radius:4px;background:var(--s2)}
+.hi-bar-sm{width:34px;height:6px}
+.hi-bar-lg{width:78px;height:11px;background:color-mix(in srgb,var(--hi-accent) 16%,var(--s2))}
+.hi-bar-pill{width:28px;height:6px;background:color-mix(in srgb,var(--hi-accent) 34%,var(--s2))}
 .hi-donut{width:38px;height:38px;flex-shrink:0}
 .hi-donut-track{fill:none;stroke:var(--s2);stroke-width:5}
 .hi-donut-seg{fill:none;stroke-width:5;stroke-linecap:round}

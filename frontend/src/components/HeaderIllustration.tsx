@@ -2,17 +2,19 @@ import { useRef, type CSSProperties } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { ReportKey } from '../app/reports';
 
-// Decorative "stacked dashboard cards" for a page header: a summary tile with
-// a mini sparkline + donut, layered on a soft glass card. Placeholder data per
-// module — purely visual, floats gently, drifts a touch with the cursor.
-const DATA: Record<ReportKey, { label: string; value: string; delta: string; spark: number[]; donut: [number, number, number] }> = {
-  meta: { label: 'Amount Spent', value: 'Rp 84,2 jt', delta: '+6,4%', spark: [22, 30, 26, 38, 34, 46, 52], donut: [58, 27, 15] },
-  shopee: { label: 'Total Omzet', value: 'Rp 128,4 jt', delta: '+12,5%', spark: [18, 24, 22, 33, 40, 37, 49], donut: [64, 24, 12] },
-  tiktok: { label: 'GMV Max', value: 'Rp 41,7 jt', delta: '+18,7%', spark: [12, 20, 28, 24, 36, 44, 54], donut: [72, 18, 10] },
-  business: { label: 'Revenue', value: 'Rp 512 jt', delta: '+4,9%', spark: [30, 32, 28, 36, 40, 42, 45], donut: [46, 34, 20] },
-  summary: { label: 'Cost / Revenue', value: '18,3%', delta: '−2,1%', spark: [40, 36, 38, 30, 28, 24, 22], donut: [40, 35, 25] },
-  reports: { label: 'Laporan tersimpan', value: '128', delta: '+9', spark: [10, 14, 20, 26, 30, 38, 44], donut: [55, 30, 15] },
-  brands: { label: 'Brand aktif', value: '12', delta: '+2', spark: [6, 10, 12, 18, 22, 28, 33], donut: [50, 30, 20] },
+// Decorative "stacked dashboard cards" for a page header: an abstract stat tile
+// with a mini sparkline + donut, layered on a soft glass card. No real figures —
+// this is a report tool, so a made-up "Rp 84,2 jt" would read as data. Purely
+// visual: floats gently, drifts a touch with the cursor. The sparkline / donut
+// shapes vary per module just for a bit of visual variety.
+const SHAPE: Record<ReportKey, { spark: number[]; donut: [number, number, number] }> = {
+  meta: { spark: [22, 30, 26, 38, 34, 46, 52], donut: [58, 27, 15] },
+  shopee: { spark: [18, 24, 22, 33, 40, 37, 49], donut: [64, 24, 12] },
+  tiktok: { spark: [12, 20, 28, 24, 36, 44, 54], donut: [72, 18, 10] },
+  business: { spark: [30, 32, 28, 36, 40, 42, 45], donut: [46, 34, 20] },
+  summary: { spark: [40, 36, 38, 30, 28, 33, 30], donut: [40, 35, 25] },
+  reports: { spark: [10, 14, 20, 26, 30, 38, 44], donut: [55, 30, 15] },
+  brands: { spark: [6, 10, 12, 18, 22, 28, 33], donut: [50, 30, 20] },
 };
 
 function sparkPath(vals: number[], w: number, h: number): string {
@@ -31,11 +33,10 @@ function sparkPath(vals: number[], w: number, h: number): string {
 export function HeaderIllustration({ report, accent }: { report: ReportKey; accent: string }) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
-  const d = DATA[report];
+  const d = SHAPE[report];
   const total = d.donut[0] + d.donut[1] + d.donut[2];
   const C = 2 * Math.PI * 15;
   const segs = d.donut.map((v) => (v / total) * C);
-  const up = !d.delta.startsWith('−');
 
   function onMove(e: React.MouseEvent) {
     if (reduce || !ref.current) return;
@@ -65,10 +66,10 @@ export function HeaderIllustration({ report, accent }: { report: ReportKey; acce
           </svg>
         </div>
         <div className="hi-card hi-card-front">
-          <div className="hi-metric">
-            <span className="hi-metric-label">{d.label}</span>
-            <span className="hi-metric-value num">{d.value}</span>
-            <span className={`hi-metric-delta num ${up ? 'up' : 'down'}`}>{up ? '▲' : '▼'} {d.delta.replace('−', '').replace('+', '')}</span>
+          <div className="hi-bars">
+            <span className="hi-bar hi-bar-sm" />
+            <span className="hi-bar hi-bar-lg" />
+            <span className="hi-bar hi-bar-pill" />
           </div>
           <svg viewBox="0 0 40 40" className="hi-donut">
             <circle cx="20" cy="20" r="15" className="hi-donut-track" />
