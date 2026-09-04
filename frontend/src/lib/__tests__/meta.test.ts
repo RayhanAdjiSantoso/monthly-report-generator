@@ -143,8 +143,20 @@ describe('displayName', () => {
   it('matches the more specific "with shared items" pattern before the base one', () => {
     // RENAME_MAP order matters: "purchases with shared items" must win over
     // the bare "purchases" pattern, since the latter is also a substring match.
-    expect(displayName('Purchases with Shared Items')).toBe('Purchases');
-    expect(displayName('Cost per Purchase with Shared Items')).toBe('Cost per Purchase');
+    expect(displayName('Purchases with Shared Items')).toBe('Purchases (shared items)');
+    expect(displayName('Cost per Purchase with Shared Items')).toBe('Cost per Purchase (shared items)');
+    // The bare (non-shared) columns keep their plain labels.
+    expect(displayName('Purchases')).toBe('Purchases');
+    expect(displayName('Cost per Purchase')).toBe('Cost per Purchase');
+  });
+
+  it('disambiguates the three CPAS "adds to cart" columns and the typo\'d cost-per-purchase column', () => {
+    expect(displayName('Adds to cart with shared items')).toBe('Adds to Cart (shared items)');
+    expect(displayName('Cost per adds to cart (shared items) (IDR)')).toBe('Cost per Add to Cart (shared items)');
+    expect(displayName('Adds to cart conversion value for shared items only')).toBe('Adds to Cart Conversion Value (shared items)');
+    expect(displayName('Cost per puchase (shared items) (IDR)')).toBe('Cost per Purchase (shared items)');
+    expect(displayName('Results')).toBe('Results (blended)');
+    expect(displayName('Cost per result')).toBe('Cost per Result (blended)');
   });
 
   it('falls back to the raw column name when nothing matches', () => {
