@@ -733,6 +733,51 @@
 /* First column (the metric name) reads as a label, not body text. */
 .kpi-table td:first-child{color:var(--text)}
 
+/* ── Section headings: bigger, so each one clearly separates its table ──────
+   Plain tokens/hex only (no color-mix) — these render in PNG/PDF export. */
+.sec-heading{
+  font-size:1.02rem;font-weight:800;letter-spacing:-.015em;
+  padding:1rem 1.4rem;gap:12px;
+}
+.sec-heading::before{width:4px;height:1.15em;border-radius:3px}
+.sec-badge{font-size:.64rem}
+
+/* ── Period-comparison tables: pull the numbers back toward the label ──────
+   The plain 4-column tables (KpiTable, the Fundamental groups, Overall Ads)
+   stretched to fill the card with a 44% label column, leaving a wide empty
+   channel between each metric name and its figures. Cap the width and trim
+   the label column so the three value columns sit close to the names. Wide
+   / many-column tables (.metric-wide-table, the DataTable rankings, Business
+   inputs) keep their own layout. */
+.sec-block .kpi-compact,
+.sec-block .fg-table,
+.sec-block .fa-overall-table{max-width:760px;width:100%}
+.sec-block .kpi-compact th:first-child,.sec-block .kpi-compact td:first-child,
+.sec-block .fg-table th:first-child,.sec-block .fg-table td:first-child,
+.sec-block .fa-overall-table th:first-child,.sec-block .fa-overall-table td:first-child{width:38%}
+.sec-block .kpi-compact th:not(:first-child),.sec-block .kpi-compact td:not(:first-child),
+.sec-block .fa-overall-table th:not(:first-child),.sec-block .fa-overall-table td:not(:first-child){width:20.6%}
+/* When a section is captured to PNG the fit-content rules already free every
+   column — don't let the cap fight them. */
+.png-fit-content .sec-block .kpi-compact,
+.png-fit-content .sec-block .fg-table,
+.png-fit-content .sec-block .fa-overall-table{max-width:none!important}
+
+/* ── "Overall Ads" — the 3 headline numbers above the editable groups ────── */
+.fa-overall{margin-bottom:1.4rem}
+.fa-overall-head{
+  display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;
+  font-size:.9rem;font-weight:800;color:var(--shopee);letter-spacing:-.01em;margin-bottom:.5rem;
+}
+.fa-overall-table{
+  border:1px solid var(--shopee-300);border-radius:12px;overflow:hidden;
+  box-shadow:var(--shadow-sm);
+}
+.fa-overall-table thead tr{background:var(--shopee-100)}
+.fa-overall-table thead th{color:var(--shopee);border-bottom-color:var(--shopee-300)}
+.fa-overall-table td:first-child{font-weight:700}
+.fa-overall-table tbody tr:last-child td{border-bottom:none}
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media(max-width:920px){
   .gen-wrap{grid-template-columns:1fr;padding-bottom:4rem}

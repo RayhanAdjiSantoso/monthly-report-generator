@@ -75,7 +75,7 @@ export function KpiTable({ rows, defaultVisibleIds, p1, p2, emptyMessage, padded
     !visibleRows.length && !totalRow ? (
       <div className="empty-note">{emptyMessage || 'Tidak ada data.'}</div>
     ) : (
-      <table className="kpi-table">
+      <table className="kpi-table kpi-compact">
         <thead>
           <tr>
             <th></th>
