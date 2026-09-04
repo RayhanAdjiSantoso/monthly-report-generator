@@ -339,7 +339,7 @@
    ========================================================================= */
 
 /* Client picker card — same left-accent card language as the source blocks. */
-.client-bar{border:1px solid var(--border);border-left-width:1px;border-radius:16px;box-shadow:var(--shadow-sm);padding:1rem 1.2rem;margin-bottom:1.1rem}
+.client-bar{position:relative;z-index:40;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:1rem 1.2rem;margin-bottom:1.1rem}
 
 /* ── SearchSelect — custom searchable dropdown (replaces the native <select>) ── */
 .ssel{position:relative;min-width:min(260px,100%)}
@@ -405,35 +405,55 @@
 .source-label::after{display:none}            /* drop the trailing hairline */
 .source-block .sec-badge{background:var(--s2);border-color:var(--border)}
 
-/* Dropzones: one compact row (icon · label/hint · rowcount). A fraction of
-   the old stacked card's height; drag-drop + click still cover the whole row. */
+/* ── Upload dropzones ─────────────────────────────────────────────────────
+   Compact card: a small circular icon + a three-tier text column. Neutral
+   blue on every platform — an orange dropzone reads like a warning — so
+   Shopee/TikTok keep their accent on the section label only. Click and
+   drag-drop still cover the whole card. */
 .dz{
   flex-direction:row;align-items:center;justify-content:flex-start;text-align:left;
-  min-height:0;padding:.62rem .85rem;gap:.7rem;border-radius:12px;border-width:1.5px;
-  border-color:color-mix(in srgb,var(--acc) 34%,var(--border));
-  background:color-mix(in srgb,var(--acc) 5%,var(--surface));
+  min-height:0;padding:.85rem .95rem;gap:.8rem;
+  border:1.5px solid var(--border);border-radius:14px;
+  background:var(--surface);box-shadow:var(--shadow-sm);
+  transition:border-color .2s var(--ease-out),background .2s var(--ease-out),box-shadow .2s var(--ease-out);
 }
-.dz .dz-icon{font-size:1rem;flex-shrink:0;width:1.5rem;height:1.5rem;display:flex;align-items:center;justify-content:center;border-radius:7px;background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--acc)}
+.dz .dz-icon{
+  flex-shrink:0;width:2.15rem;height:2.15rem;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:.95rem;line-height:1;
+  background:var(--acc-100);color:var(--acc);
+  transition:background .2s var(--ease-out),color .2s var(--ease-out),transform .2s var(--ease-out);
+}
 .dz-main{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
-.dz .dz-tag{font-size:.74rem;font-weight:700;color:var(--text);text-transform:none;letter-spacing:0}
-.dz-hint{font-size:.66rem;color:var(--muted);font-weight:500}
-.dz .dz-file{margin:0;padding:0;border:0;background:none;font-size:.66rem;font-weight:600;color:var(--acc);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dz .dz-tag{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted2)}
+.dz-hint{font-size:.8rem;font-weight:650;color:var(--text);letter-spacing:-.01em}
+.dz-sub{font-size:.66rem;color:var(--muted2);font-weight:500}
+.dz .dz-file{margin:0;padding:0;border:0;background:none;font-size:.7rem;font-weight:650;color:var(--acc);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dz .dz-rows{flex-shrink:0;font-size:.62rem;color:var(--muted);font-weight:700;background:var(--s2);border-radius:6px;padding:.15rem .45rem}
-.dz:hover,.dz.drag{border-color:var(--acc);background:var(--acc-100)}
-.dz.loaded{border-style:solid;border-color:color-mix(in srgb,var(--acc) 55%,var(--border));background:color-mix(in srgb,var(--acc) 8%,var(--surface))}
-.dz.loaded .dz-icon{background:var(--acc);color:#fff;font-weight:800}
-/* A lone row (single-file blocks like Meta / CPAS) shouldn't span the whole card. */
-.source-block > .dz{max-width:460px}
-.dz.shopee-dz{border-color:color-mix(in srgb,var(--shopee) 34%,var(--border));background:color-mix(in srgb,var(--shopee) 5%,var(--surface))}
-.dz.shopee-dz .dz-icon{background:color-mix(in srgb,var(--shopee) 13%,transparent);color:var(--shopee)}
-.dz.shopee-dz .dz-file{color:var(--shopee)}
-.dz.shopee-dz:hover,.dz.shopee-dz.drag{border-color:var(--shopee);background:var(--shopee-100)}
-.dz.shopee-dz.loaded{border-color:color-mix(in srgb,var(--shopee) 55%,var(--border));background:color-mix(in srgb,var(--shopee) 8%,var(--surface))}
-.dz.shopee-dz.loaded .dz-icon{background:var(--shopee);color:#fff}
+.dz:hover,.dz.drag{border-color:var(--acc);background:var(--acc-100);box-shadow:var(--shadow)}
+.dz:hover .dz-icon,.dz.drag .dz-icon{background:var(--acc);color:#fff;transform:scale(1.06)}
+.dz.loaded{border-style:solid;border-color:color-mix(in srgb,var(--acc) 45%,var(--border));background:color-mix(in srgb,var(--acc) 6%,var(--surface))}
+.dz.loaded .dz-icon{background:var(--acc);color:#fff}
+/* Neutralise the leftover orange treatment on Shopee dropzones. */
+.dz.shopee-dz.loaded{border-color:color-mix(in srgb,var(--acc) 45%,var(--border));background:color-mix(in srgb,var(--acc) 6%,var(--surface))}
+.dz.shopee-dz.loaded .dz-file{color:var(--acc);background:none;border:0}
 
-/* Two-up file rows sit in a tidy responsive grid. */
-.dz-grid-4,.dz-grid{gap:.6rem}
-@media(max-width:640px){.dz-grid,.dz-grid-4{grid-template-columns:1fr}}
+/* ── Period pairs: two compact cards, centred — never a full-width stretch ── */
+.dz-grid,.dz-grid-4{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,300px));
+  justify-content:center;gap:20px;
+}
+/* A lone file (Referensi Kategori, etc.) — one wider card, centred. */
+.dz-grid:has(> .dz:only-child),
+.dz-grid-4:has(> .dz:only-child){grid-template-columns:minmax(0,640px)}
+/* Columns that carry the saved-period switcher need the full width. */
+.dz-grid:has(.slot-src-tabs),
+.dz-grid-4:has(.slot-src-tabs){grid-template-columns:repeat(2,minmax(0,1fr));justify-content:stretch}
+/* A single file in its own source-block (Meta, CPAS): centred and capped. */
+.source-block > .dz{max-width:660px;margin-inline:auto}
+@media(max-width:680px){
+  .dz-grid,.dz-grid-4,
+  .dz-grid:has(.slot-src-tabs),.dz-grid-4:has(.slot-src-tabs){grid-template-columns:minmax(0,1fr)}
+}
 
 /* "Data tambahan (opsional)" — the 7 optional Shopee upload cards fold away. */
 .opt-group{

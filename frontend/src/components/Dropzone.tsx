@@ -51,7 +51,10 @@ export function Dropzone({ tag, accept, onFile, loaded, fileName, infoText, disa
             {fileName}
           </span>
         ) : (
-          <span className="dz-hint">Klik atau tarik file ke sini</span>
+          <>
+            <span className="dz-hint">Klik atau tarik file ke sini</span>
+            <span className="dz-sub">Pilih file dari perangkat Anda</span>
+          </>
         )}
       </span>
       {loaded && infoText && <span className="dz-rows">{infoText}</span>}
