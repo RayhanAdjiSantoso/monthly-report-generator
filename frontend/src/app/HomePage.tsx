@@ -2,6 +2,8 @@ import type { CSSProperties, MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ParticleField } from '../components/ParticleField';
 import { Reveal } from '../components/Reveal';
+import { ReportIcon } from '../components/ReportIcon';
+import { RotatingHeadline } from '../components/RotatingHeadline';
 import { useScrollParallax } from '../hooks/useScrollParallax';
 import { REPORT_NAV, type ReportNavItem } from './reports';
 
@@ -46,16 +48,24 @@ function HomeCard({ item, delay }: { item: ReportNavItem; delay: number }) {
       <Link
         to={`/generate/${item.key}`}
         className="home-card"
-        style={{ '--card-accent': item.accent } as CSSProperties}
+        style={{ '--card-accent': item.accent, '--card-tint': item.tint } as CSSProperties}
         onMouseMove={trackPointer}
         onMouseLeave={resetPointer}
       >
         <span className="home-card-glow" aria-hidden />
-        <span className="home-card-mark">{item.mark}</span>
+        <ReportIcon name={item.key} className="home-card-ghost" />
+        <span className="home-card-mark" aria-hidden>
+          <ReportIcon name={item.key} className="home-card-mark-svg" />
+        </span>
         <span className="home-card-label">{item.label}</span>
         <span className="home-card-tagline">{item.tagline}</span>
         <span className="home-card-desc">{item.desc}</span>
-        <span className="home-card-go">Buka →</span>
+        <span className="home-card-go">
+          Buka
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 8h9M8.5 4l4 4-4 4" />
+          </svg>
+        </span>
       </Link>
     </Reveal>
   );
@@ -77,31 +87,31 @@ export function HomePage() {
           </div>
           <div className="home-gridlines" />
           <ParticleField className="home-particles" />
+          <svg className="home-hero-ring" viewBox="0 0 200 200" aria-hidden>
+            <circle cx="100" cy="100" r="94" />
+            <circle cx="100" cy="100" r="66" />
+            <circle cx="100" cy="100" r="38" />
+          </svg>
         </div>
 
         <div className="home-hero-inner bleed">
-          <p className="home-eyebrow hero-reveal" style={{ '--hr-y': '10px' } as CSSProperties}>
-            MIL Digital · Performance Reporting
-          </p>
-          <h1 className="home-title">
-            <span className="hero-line hero-reveal" style={{ '--hr-y': '20px', '--hr-delay': '100ms' } as CSSProperties}>
-              Laporan performa iklan,
-            </span>
-            <span className="hero-line home-title-grad hero-reveal" style={{ '--hr-y': '20px', '--hr-delay': '200ms' } as CSSProperties}>
-              tersusun dalam hitungan detik.
-            </span>
-          </h1>
-          <p className="home-lede hero-reveal" style={{ '--hr-y': '15px', '--hr-delay': '300ms' } as CSSProperties}>
-            Satu tempat untuk merangkum Meta Ads, Shopee Ads, dan TikTok GMV Max — perbandingan antar periode, deep-dive per produk,
-            hingga ringkasan bisnis menyeluruh.
-          </p>
-          <div className="home-cta-row hero-reveal" style={{ '--hr-y': '10px', '--hr-s': '.97', '--hr-delay': '450ms' } as CSSProperties}>
-            <Link to="/generate/meta" className="btn btn-primary home-cta-lg">
-              Mulai buat laporan
-            </Link>
-            <Link to="/generate/reports" className="btn btn-ghost home-cta-lg">
-              Buka riwayat laporan
-            </Link>
+          <div className="home-hero-copy">
+            <p className="home-eyebrow hero-reveal" style={{ '--hr-y': '10px' } as CSSProperties}>
+              MIL Digital · Performance Reporting
+            </p>
+            <RotatingHeadline />
+            <p className="home-lede hero-reveal" style={{ '--hr-y': '15px', '--hr-delay': '700ms' } as CSSProperties}>
+              Satu tempat untuk merangkum Meta Ads, Shopee Ads, dan TikTok GMV Max — perbandingan antar periode, deep-dive per produk,
+              hingga ringkasan bisnis menyeluruh.
+            </p>
+            <div className="home-cta-row hero-reveal" style={{ '--hr-y': '10px', '--hr-s': '.97', '--hr-delay': '850ms' } as CSSProperties}>
+              <Link to="/generate/meta" className="btn btn-primary home-cta-lg">
+                Mulai buat laporan
+              </Link>
+              <Link to="/generate/reports" className="btn btn-ghost home-cta-lg">
+                Buka riwayat laporan
+              </Link>
+            </div>
           </div>
         </div>
       </section>
