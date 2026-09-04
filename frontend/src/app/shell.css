@@ -742,26 +742,29 @@
 .sec-heading::before{width:4px;height:1.15em;border-radius:3px}
 .sec-badge{font-size:.64rem}
 
-/* ── Period-comparison tables: pull the numbers back toward the label ──────
+/* ── Period-comparison tables: numbers as a tidy right-hand cluster ────────
    The plain 4-column tables (KpiTable, the Fundamental groups, Overall Ads)
-   stretched to fill the card with a 44% label column, leaving a wide empty
-   channel between each metric name and its figures. Cap the width and trim
-   the label column so the three value columns sit close to the names. Wide
-   / many-column tables (.metric-wide-table, the DataTable rankings, Business
-   inputs) keep their own layout. */
-.sec-block .kpi-compact,
-.sec-block .fg-table,
-.sec-block .fa-overall-table{max-width:760px;width:100%}
+   used a 44% label column with the three value columns spread evenly across
+   the rest — a wide dead channel between each metric name and its figures.
+   Instead: the value columns shrink to their content and the label column
+   absorbs all the slack, so the table still fills its box but the numbers
+   line up as one compact block on the right (same idea as the ranking
+   tables). Wide / many-column tables keep their own layout. */
 .sec-block .kpi-compact th:first-child,.sec-block .kpi-compact td:first-child,
 .sec-block .fg-table th:first-child,.sec-block .fg-table td:first-child,
-.sec-block .fa-overall-table th:first-child,.sec-block .fa-overall-table td:first-child{width:38%}
+.sec-block .fa-overall-table th:first-child,.sec-block .fa-overall-table td:first-child{width:auto}
 .sec-block .kpi-compact th:not(:first-child),.sec-block .kpi-compact td:not(:first-child),
-.sec-block .fa-overall-table th:not(:first-child),.sec-block .fa-overall-table td:not(:first-child){width:20.6%}
-/* When a section is captured to PNG the fit-content rules already free every
-   column — don't let the cap fight them. */
-.png-fit-content .sec-block .kpi-compact,
-.png-fit-content .sec-block .fg-table,
-.png-fit-content .sec-block .fa-overall-table{max-width:none!important}
+.sec-block .fg-table th:not(:first-child),.sec-block .fg-table td:not(:first-child),
+.sec-block .fa-overall-table th:not(:first-child),.sec-block .fa-overall-table td:not(:first-child){
+  width:9.5rem;white-space:nowrap;
+}
+.sec-block .kpi-compact th,.sec-block .kpi-compact td,
+.sec-block .fg-table th,.sec-block .fg-table td,
+.sec-block .fa-overall-table th,.sec-block .fa-overall-table td{padding-left:.9rem;padding-right:.9rem}
+/* PNG capture shrink-wraps every table — release the fixed value width too. */
+.png-fit-content .sec-block .kpi-compact th:not(:first-child),.png-fit-content .sec-block .kpi-compact td:not(:first-child),
+.png-fit-content .sec-block .fg-table th:not(:first-child),.png-fit-content .sec-block .fg-table td:not(:first-child),
+.png-fit-content .sec-block .fa-overall-table th:not(:first-child),.png-fit-content .sec-block .fa-overall-table td:not(:first-child){width:auto!important}
 
 /* ── "Overall Ads" — the 3 headline numbers above the editable groups ────── */
 .fa-overall{margin-bottom:1.4rem}
