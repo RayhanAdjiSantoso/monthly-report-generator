@@ -1180,23 +1180,28 @@ export type MetaIndustry = 'b2b' | 'retail' | 'custom' | null;
 // Overview metric definitions per industry. `customResultsCol` is passed in
 // explicitly (the original read a module-level global set by the industry
 // picker UI) since this module has no DOM/UI state of its own.
-export function getOverviewDefs(industry: MetaIndustry, allCols: string[], customResultsCol: string | null): OverviewDefs {
-  // Same noise-word guard as findDenomCol: never match a "Cost per X",
-  // ratio, or rate column as if it were the raw metric being searched for
-  // (unless a keyword itself is asking for that, e.g. "conversion value"),
-  // so e.g. `find(['purchases'])` can't pick "Purchases conversion value"
-  // as a purchase *count* — verified against a real export with no bare
-  // "Purchases" column: that produced a nonsense "Cost per Purchase" of
-  // Rp2 (Spend ÷ a summed dollar-value column) in the Overview row instead
-  // of failing safely to no Cost-per-Purchase pair at all.
-  const find = (kws: string[]) => {
+// Column finder with a noise-word guard: never match a "Cost per X", ratio,
+// or rate column as if it were the raw metric being searched for (unless a
+// keyword itself is asking for that, e.g. "conversion value"), so e.g.
+// `find(['purchases'])` can't pick "Purchases conversion value" as a
+// purchase *count* — verified against a real export with no bare "Purchases"
+// column: that produced a nonsense "Cost per Purchase" of Rp2 (Spend ÷ a
+// summed dollar-value column) instead of failing safely to no pair at all.
+export function makeMetaColFinder(allCols: string[]) {
+  return (kws: string[]): string | null => {
     const noiseWords = ['ratio', 'rate', 'value', 'cost per'].filter((w) => !kws.some((k) => k.includes(w)));
-    return allCols.find((c) => {
-      const lc = c.toLowerCase();
-      if (!kws.some((k) => lc.includes(k.toLowerCase()))) return false;
-      return !noiseWords.some((w) => lc.includes(w));
-    }) || null;
+    return (
+      allCols.find((c) => {
+        const lc = c.toLowerCase();
+        if (!kws.some((k) => lc.includes(k.toLowerCase()))) return false;
+        return !noiseWords.some((w) => lc.includes(w));
+      }) || null
+    );
   };
+}
+
+export function getOverviewDefs(industry: MetaIndustry, allCols: string[], customResultsCol: string | null): OverviewDefs {
+  const find = makeMetaColFinder(allCols);
   const defs: OverviewDefs = {
     boost: {
       cols: [find(['amount spent']), find(['profile visit', 'instagram profile visit'])].filter((c): c is string => Boolean(c)),
@@ -1230,4 +1235,201 @@ export function getOverviewDefs(industry: MetaIndustry, allCols: string[], custo
     cprPair: null,
   };
   return defs;
+}
+
+// ══════════════════════════════════════════════════════
+// PER-OBJECTIVE SPLIT — when one ad account runs several objectives at once
+// (Purchase + Leads + Traffic …) the Non-Boost lane can't be summed into one
+// "Cost per X": the numerator would mix every objective's spend. If the
+// export carries a per-campaign objective (a "Result type" / "Result
+// indicator" / "Objective" column) — or the campaign names encode it — the
+// lane is split into one sub-section per objective, each with its own
+// headline metric, plus a blended row on top.
+// ══════════════════════════════════════════════════════
+
+export type MetaObjectiveKey =
+  | 'purchase'
+  | 'leads'
+  | 'message'
+  | 'link_click'
+  | 'landing_page'
+  | 'profile_visit'
+  | 'video_view'
+  | 'engagement'
+  | 'reach'
+  | 'app'
+  | 'other';
+
+interface MetaObjectiveDef {
+  label: string;
+  // Headline columns to show, one keyword-set per slot (first hit wins).
+  headline: string[][];
+  cprLabel: string;
+  // Denominator for the "Cost per X" row; empty = no cost-per row.
+  cprDenom: string[];
+}
+
+export const META_OBJECTIVE_DEFS: Record<MetaObjectiveKey, MetaObjectiveDef> = {
+  purchase: {
+    label: 'Purchase',
+    headline: [['purchases'], ['purchases conversion value', 'conversion value'], ['purchase roas', 'roas']],
+    cprLabel: 'Cost per Purchase',
+    cprDenom: ['purchases'],
+  },
+  leads: {
+    label: 'Leads',
+    headline: [['leads', 'results']],
+    cprLabel: 'Cost per Lead',
+    cprDenom: ['leads', 'results'],
+  },
+  message: {
+    label: 'Message',
+    headline: [['messaging conversations started', 'total messages', 'messaging conversations']],
+    cprLabel: 'Cost per Message',
+    cprDenom: ['messaging conversations started', 'total messages', 'messaging conversations'],
+  },
+  link_click: {
+    label: 'Traffic',
+    headline: [['link clicks', 'outbound clicks', 'clicks (all)']],
+    cprLabel: 'Cost per Link Click',
+    cprDenom: ['link clicks', 'outbound clicks', 'clicks (all)'],
+  },
+  landing_page: {
+    label: 'Landing Page Views',
+    headline: [['landing page views']],
+    cprLabel: 'Cost per Landing Page View',
+    cprDenom: ['landing page views'],
+  },
+  profile_visit: {
+    label: 'Profile Visits',
+    headline: [['profile visit', 'instagram profile visit']],
+    cprLabel: 'Cost per Profile Visit',
+    cprDenom: ['profile visit', 'instagram profile visit'],
+  },
+  video_view: {
+    label: 'Video Views',
+    headline: [['thruplays', '3-second video plays', 'video plays', 'video views']],
+    cprLabel: 'Cost per ThruPlay',
+    cprDenom: ['thruplays', 'video plays'],
+  },
+  engagement: {
+    label: 'Engagement',
+    headline: [['post engagements', 'page engagement', 'post reactions']],
+    cprLabel: 'Cost per Engagement',
+    cprDenom: ['post engagements', 'page engagement'],
+  },
+  reach: {
+    label: 'Awareness',
+    headline: [['reach'], ['impressions']],
+    cprLabel: 'Cost per Result',
+    cprDenom: [],
+  },
+  app: {
+    label: 'App Installs',
+    headline: [['app installs', 'mobile app installs']],
+    cprLabel: 'Cost per App Install',
+    cprDenom: ['app installs', 'mobile app installs'],
+  },
+  other: {
+    label: 'Objective Lain',
+    headline: [['results']],
+    cprLabel: 'Cost per Result',
+    cprDenom: ['results'],
+  },
+};
+
+// The order sub-sections render in (independent of Map insertion order).
+export const META_OBJECTIVE_ORDER: MetaObjectiveKey[] = [
+  'purchase',
+  'leads',
+  'message',
+  'link_click',
+  'landing_page',
+  'video_view',
+  'engagement',
+  'app',
+  'profile_visit',
+  'reach',
+  'other',
+];
+
+// A "Result type" / "Result indicator" / "Objective" / "Optimization goal"
+// column, if the export has one. `null` when it doesn't.
+export function detectMetaObjectiveCol(headers: string[]): string | null {
+  return (
+    headers.find((h) => {
+      const lc = h.trim().toLowerCase();
+      return (
+        lc === 'result type' ||
+        lc === 'result indicator' ||
+        lc === 'objective' ||
+        lc === 'campaign objective' ||
+        lc.includes('result type') ||
+        lc.includes('result indicator') ||
+        lc.includes('optimization goal') ||
+        lc.includes('optimisation goal')
+      );
+    }) ?? null
+  );
+}
+
+// Maps a raw objective / result-type / campaign-name string to a known key.
+export function classifyMetaObjective(raw: string): MetaObjectiveKey {
+  const lc = (raw || '').toLowerCase();
+  if (!lc.trim()) return 'other';
+  if (/\blead|leadgen|lead gen|onsite_conversion\.lead|instant_form|\bcpl\b/.test(lc)) return 'leads';
+  if (/messag|conversation|whatsapp\b|\bwa\b|onsite_conversion\.messaging/.test(lc)) return 'message';
+  if (/purchase|checkout|fb_pixel_purchase|omni_purchase|\bsales\b|catalog_sales|conversions?\b|\broas\b/.test(lc)) return 'purchase';
+  if (/landing_page|landing page|\blpv\b/.test(lc)) return 'landing_page';
+  if (/link_click|link click|outbound_click|\btraffic\b/.test(lc)) return 'link_click';
+  if (/profile_visit|profile visit|ig_profile|\bpv\b/.test(lc)) return 'profile_visit';
+  if (/thruplay|video_view|video view|\bvv\b|\bvideo\b/.test(lc)) return 'video_view';
+  if (/post_engagement|page_engagement|engagement|\bpe\b|reactions?\b/.test(lc)) return 'engagement';
+  if (/app_install|mobile_app|app install/.test(lc)) return 'app';
+  if (/reach|impression|awareness|\bbrand\b/.test(lc)) return 'reach';
+  return 'other';
+}
+
+export interface ObjectiveOverviewDef {
+  label: string;
+  cols: string[];
+  cprPair: CprPair | null;
+}
+
+// Headline + cost-per definition for one objective, against the columns the
+// file actually has. `spentCol` is passed so a caller can reuse the same
+// "Amount Spent" match everywhere.
+export function buildObjectiveOverviewDef(key: MetaObjectiveKey, allCols: string[], label?: string): ObjectiveOverviewDef {
+  const find = makeMetaColFinder(allCols);
+  // Try each keyword in priority order (a dedicated "Leads" column beats the
+  // generic "Results" column), rather than "any keyword, first column".
+  const findOrdered = (kws: string[]) => {
+    for (const k of kws) {
+      const c = find([k]);
+      if (c) return c;
+    }
+    return null;
+  };
+  const spent = find(['amount spent']);
+  const def = META_OBJECTIVE_DEFS[key];
+  const headlineCols = def.headline.map((kws) => findOrdered(kws)).filter((c): c is string => Boolean(c));
+  const denom = def.cprDenom.length ? findOrdered(def.cprDenom) : null;
+  return {
+    label: label || def.label,
+    cols: [spent, ...headlineCols].filter((c): c is string => Boolean(c)),
+    cprPair: spent && denom ? { spent, denom, label: def.cprLabel } : null,
+  };
+}
+
+// Blended headline for the whole Non-Boost lane — total spend ÷ total
+// "Results" (each campaign's own objective result), shown above the split.
+export function buildBlendedNonBoostDef(allCols: string[]): ObjectiveOverviewDef {
+  const find = makeMetaColFinder(allCols);
+  const spent = find(['amount spent']);
+  const results = find(['results']);
+  return {
+    label: 'Blended',
+    cols: [spent, results].filter((c): c is string => Boolean(c)),
+    cprPair: spent && results ? { spent, denom: results, label: 'Cost per Result (blended)' } : null,
+  };
 }

@@ -5,7 +5,7 @@ import { useScrollAfterGenerate } from '../../hooks/useScrollAfterGenerate';
 import { DemoBreakdownCard } from '../../components/DemoBreakdownCard';
 import { HowTo, HowToStep } from '../../components/HowTo';
 import { InlineNotice } from '../../components/InlineNotice';
-import { defaultMetaDayRanges, isNumericCol, isSkip, metaDayRange, type MetaIndustry } from '../../lib/meta';
+import { defaultMetaDayRanges, detectMetaObjectiveCol, isNumericCol, isSkip, metaDayRange, type MetaIndustry } from '../../lib/meta';
 import { findCol } from '../../lib/columns';
 import { daysBetweenInclusive, formatPeriodLabel } from '../../lib/periodLabel';
 import { fromISODate, toISODate } from '../../lib/dateFmt';
@@ -231,7 +231,11 @@ export function MetaTab({ isActive, clientId, onGenerated, onInvalidate }: MetaT
   }
 
   const customNumCols = metaRows ? metaHeaders.filter((h) => isNumericCol(h, metaRows) && !isSkip(h)) : [];
-  const industryOk = Boolean(industry && (industry !== 'custom' || customResultsCol));
+  // When the export carries a per-campaign objective column, Non-Boost is
+  // split per objective automatically — the industry pick becomes optional
+  // (only used as the headline for files that have no objective column).
+  const objectiveCol = metaRows ? detectMetaObjectiveCol(metaHeaders) : null;
+  const industryOk = Boolean(objectiveCol) || Boolean(industry && (industry !== 'custom' || customResultsCol));
   const dayRangesOk = !dayCol || Boolean(oldRange && curRange && oldRange.start <= oldRange.end && curRange.start <= curRange.end);
   const ready = Boolean(metaRows && industryOk && clientId && dayRangesOk);
   const dayRanges = oldRange && curRange ? { old: oldRange, cur: curRange } : null;
@@ -408,9 +412,19 @@ export function MetaTab({ isActive, clientId, onGenerated, onInvalidate }: MetaT
         />
       )}
 
+      {metaRows && objectiveCol && (
+        <div className="source-block">
+          <InlineNotice tone="info" title={`Kolom objective terdeteksi: "${objectiveCol}"`}>
+            Lajur <strong>Non-Boost</strong> otomatis dipecah jadi sub-section per objective (Purchase / Leads / Traffic / dst), masing-masing
+            dengan headline & Cost per X sendiri, plus 1 baris <strong>Blended</strong> di atasnya. Pilihan Industri di bawah jadi{' '}
+            <strong>opsional</strong> — hanya dipakai untuk file yang tidak punya kolom objective.
+          </InlineNotice>
+        </div>
+      )}
+
       {metaRows && (
         <div className="industry-selector visible">
-          <div className="industry-label">Pilih Industri / Objective</div>
+          <div className="industry-label">Pilih Industri / Objective{objectiveCol ? ' (opsional)' : ''}</div>
           <div className="industry-pills">
             <div className={`ind-pill${industry === 'b2b' ? ' selected' : ''}`} onClick={() => selectIndustry('b2b')}>
               <div className="ind-pill-dot" />
@@ -637,8 +651,34 @@ export function MetaTab({ isActive, clientId, onGenerated, onInvalidate }: MetaT
                   hidden: !report.nonBoost && !report.ageDemo && !report.genderDemo,
                   content: (
                     <>
-                      {report.nonBoost && (
-                        <OverviewDetailedCard heading="Non-Boost Post" badge="Meta Ads" overviewRows={report.nonBoost.overviewRows} detailedRows={report.nonBoost.detailedRows} allCols={report.nonBoost.allCols} p1={report.p1} p2={report.p2} />
+                      {report.nonBoost && report.nonBoostSegments ? (
+                        <>
+                          <OverviewDetailedCard
+                            heading="Non-Boost Post · Blended"
+                            badge={report.nonBoostObjectiveSource === 'column' ? 'gabungan semua objective' : 'objective dari nama campaign'}
+                            overviewRows={report.nonBoost.overviewRows}
+                            detailedRows={report.nonBoost.detailedRows}
+                            allCols={report.nonBoost.allCols}
+                            p1={report.p1}
+                            p2={report.p2}
+                          />
+                          {report.nonBoostSegments.map((seg) => (
+                            <OverviewDetailedCard
+                              key={seg.key}
+                              heading={`Non-Boost Post · ${seg.label}`}
+                              badge="Meta Ads"
+                              overviewRows={seg.overview.overviewRows}
+                              detailedRows={seg.overview.detailedRows}
+                              allCols={seg.overview.allCols}
+                              p1={report.p1}
+                              p2={report.p2}
+                            />
+                          ))}
+                        </>
+                      ) : (
+                        report.nonBoost && (
+                          <OverviewDetailedCard heading="Non-Boost Post" badge="Meta Ads" overviewRows={report.nonBoost.overviewRows} detailedRows={report.nonBoost.detailedRows} allCols={report.nonBoost.allCols} p1={report.p1} p2={report.p2} />
+                        )
                       )}
                       {report.ageDemo && (
                         <DemoBreakdownCard heading="Non-Boost Post · Age Breakdown" badge={`data ${report.p2}`} rows={report.ageDemo.rows} dimCol={report.ageDemo.dimCol} allCols={report.ageDemo.allCols} defaultCols={report.ageDemo.defaultCols} />
