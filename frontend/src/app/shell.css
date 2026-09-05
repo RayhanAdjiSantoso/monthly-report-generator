@@ -557,29 +557,48 @@
 
 /* ── Symptom Analysis: nested funnel tree ───────────────────────────────── */
 /* A real recursive <ul>/<li> tree. Weight comes from depth, not from drawing
-   thirteen identical cards: the root is a solid tinted header, depth-1 (the
-   drivers — Transaction / AOV) are surfaced cards, deeper levels are quiet
-   rows that only surface on hover. Connectors are hairlines in a neutral so
-   the structure recedes and the numbers lead. */
-.symptom-tree{--st-line:#d9dfeb;--st-node-h:34px}
+   thirteen identical cards: the root is a tinted header, depth-1 (the drivers
+   — Transaction / AOV) are surfaced cards, deeper levels are quiet rows that
+   surface on hover.
+   
+   Each ITEM owns its own vertical segment rather than the container drawing
+   one long rail: a container rail has to guess where the last child's elbow
+   is, and overshoots the moment a node wraps or the last child has a subtree
+   of its own. Per-item segments end exactly at their own elbow, so the last
+   child closes the branch cleanly every time.
+   
+   The whole thing draws itself on open — segment grows down, elbow grows
+   out, node lands — cascading through the tree in document order via --i. */
+.symptom-tree{
+  --st-line:#b9c3d6;--st-node-h:34px;
+  --st-elbow:calc(var(--st-node-h) / 2 + .18rem);   /* item top → elbow centre */
+  --st-indent:18px;
+  --st-step:58ms;                                   /* per-node cascade */
+}
 .symptom-tree-head{
   display:flex;justify-content:space-between;gap:1rem;font-size:.6rem;font-weight:800;text-transform:uppercase;
   letter-spacing:.08em;color:var(--muted2);padding:0 .55rem .5rem;
 }
 .symptom-tree ul{list-style:none}
 .symptom-tree .st-root-list{margin:0;padding:0}
-.symptom-tree .st-children{position:relative;margin:0 0 0 15px;padding:0 0 0 17px}
-.st-children::before{                        /* the level's vertical rail */
-  content:'';position:absolute;left:0;top:0;bottom:calc(var(--st-node-h) / 2 + .18rem);
-  width:1.5px;border-radius:2px;background:var(--st-line);
-  transform-origin:top;animation:st-rail .5s var(--ease-out) both;
-}
+.symptom-tree .st-children{position:relative;margin:0 0 0 15px;padding:0 0 0 var(--st-indent)}
 .st-item{position:relative}
-.st-item > .st-node::before{                 /* hairline elbow → node */
-  content:'';position:absolute;left:-17px;top:calc(var(--st-node-h) / 2 + .18rem);
-  width:17px;height:1.5px;border-radius:2px;
-  background:var(--st-line);transform-origin:left;
-  animation:st-elbow .32s var(--ease-out) both;animation-delay:calc(var(--i,0) * 34ms + 130ms);
+
+/* This item's vertical segment: full height so the branch continues past its
+   own subtree — except the last child, which stops dead at its elbow. */
+.st-item::before{
+  content:'';position:absolute;left:calc(var(--st-indent) * -1);top:0;height:100%;
+  width:2px;border-radius:2px;background:var(--st-line);
+  transform-origin:top;animation:st-grow-y .34s var(--ease-out) both;
+  animation-delay:calc(var(--i,0) * var(--st-step));
+}
+.st-item:last-child::before{height:var(--st-elbow)}
+/* …and the elbow out to the node. */
+.st-item > .st-node::before{
+  content:'';position:absolute;left:calc(var(--st-indent) * -1);top:var(--st-elbow);
+  width:var(--st-indent);height:2px;border-radius:2px;background:var(--st-line);
+  transform-origin:left;animation:st-grow-x .26s var(--ease-out) both;
+  animation-delay:calc(var(--i,0) * var(--st-step) + 130ms);
 }
 
 .st-node{
@@ -587,8 +606,9 @@
   min-height:var(--st-node-h);padding:.35rem .6rem;margin:.18rem 0;border-radius:9px;
   background:transparent;border:1px solid transparent;
   opacity:0;transform:translateX(-8px);
-  transition:background .16s var(--ease-out),border-color .16s var(--ease-out);
-  animation:st-node-in .45s var(--ease-out) forwards;animation-delay:calc(var(--i,0) * 34ms + 90ms);
+  transition:background .16s var(--ease-out),border-color .16s var(--ease-out),box-shadow .16s var(--ease-out);
+  animation:st-node-in .4s var(--ease-out) forwards;
+  animation-delay:calc(var(--i,0) * var(--st-step) + 210ms);
 }
 .st-node:hover{background:var(--surface);border-color:var(--border)}
 /* Depth 1 = the two things GMV actually decomposes into — give them a card. */
@@ -597,6 +617,7 @@
 .st-node.st-root{
   min-height:40px;padding:.5rem .75rem;margin-bottom:.3rem;
   background:var(--shopee-100);border-color:var(--shopee-300);
+  box-shadow:0 0 0 3px rgba(238,77,45,.06);
 }
 .st-label{flex:1;min-width:0;font-size:.8rem;font-weight:600;color:var(--text);letter-spacing:-.01em}
 .st-node.st-root .st-label{font-weight:800;font-size:.86rem}
@@ -609,15 +630,15 @@
 .st-node .delta-pill{flex-shrink:0;min-width:5.1rem;text-align:center}
 
 @keyframes st-node-in{to{opacity:1;transform:none}}
-@keyframes st-rail{from{transform:scaleY(0)}to{transform:scaleY(1)}}
-@keyframes st-elbow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes st-grow-y{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes st-grow-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @media (prefers-reduced-motion: reduce){
   .st-node{opacity:1;transform:none;animation:none}
-  .st-children::before,.st-item > .st-node::before{animation:none}
+  .st-item::before,.st-item > .st-node::before{animation:none}
 }
 @media(max-width:560px){
-  .st-children{margin-left:10px;padding-left:13px}
-  .st-item > .st-node::before{left:-13px;width:13px}
+  .symptom-tree{--st-indent:13px}
+  .st-children{margin-left:10px}
   .st-vals{width:100%;order:3;text-align:left}
 }
 
@@ -868,9 +889,20 @@
 /* .sec-download-btn already carries margin-left:auto, so the caret lands last. */
 .sec-acc-item .sec-heading .sec-download-btn{margin-left:auto}
 .sec-acc-item .sec-heading .sec-download-btn ~ .sec-download-btn{margin-left:0}
-body:not(.pdf-export-mode) .sec-acc-item:not(.open) .sec-block > *:not(.sec-heading){display:none}
-body:not(.pdf-export-mode) .sec-acc-item:not(.open) .sec-block{box-shadow:var(--shadow-sm)}
-.sec-acc-item.open > .sec-block{animation:none}
+/* Height is driven by an inline max-height from SectionAccordion; this just
+   supplies the curve. The content fades in behind it so an opening card
+   reveals rather than snaps. */
+.sec-acc-item .sec-block{transition:max-height .42s var(--ease-out),box-shadow .3s var(--ease-out);animation:none}
+.sec-acc-item.open > .sec-block{box-shadow:0 2px 6px rgba(15,26,58,.05),0 16px 40px rgba(15,26,58,.09)}
+.sec-acc-item.open .sec-block > *:not(.sec-heading){animation:acc-reveal .4s var(--ease-out) both;animation-delay:.06s}
+@keyframes acc-reveal{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+/* An export must contain every section, not just the one left open — !important
+   beats the inline clamp. */
+body.pdf-export-mode .sec-acc-item .sec-block{max-height:none!important;overflow:visible!important}
+@media (prefers-reduced-motion: reduce){
+  .sec-acc-item .sec-block{transition:none}
+  .sec-acc-item.open .sec-block > *:not(.sec-heading){animation:none}
+}
 
 /* Inside a split the table has ~600px, not the full card — the 9.5rem value
    columns pushed CHANGES out of view behind .fg-scroll's overflow. Trim them,
