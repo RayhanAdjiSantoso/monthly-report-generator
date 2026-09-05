@@ -330,11 +330,18 @@ function FundamentalGroupedValues({ values, p1, p2 }: { values: FunnelValueRow[]
 export function FundamentalAnalysisSection({
   values,
   liveGmv,
+  tree,
+  symptom,
   p1,
   p2,
 }: {
   values: FunnelValueRow[];
   liveGmv: { old: number; cur: number; hasData: boolean };
+  // The account-level funnel tree + its plain-language read. Both used to be
+  // their own "Symptom Analysis" section; they belong next to the numbers
+  // they explain, and the narrow table leaves room for exactly that.
+  tree?: FunnelTreeRow[];
+  symptom?: SymptomSummary;
   p1: string;
   p2: string;
 }) {
@@ -346,7 +353,13 @@ export function FundamentalAnalysisSection({
         <SectionDownloadButton />
       </div>
       <div style={{ padding: '1.1rem 1.4rem 0' }}>
-        <OverallAdsTable values={values} p1={p1} p2={p2} />
+        <div className="sec-split">
+          <div className="sec-split-main">
+            <OverallAdsTable values={values} p1={p1} p2={p2} />
+            {symptom && <SymptomSummaryPanel summary={symptom} />}
+          </div>
+          {tree && <SymptomTreePanel tree={tree} p1={p1} p2={p2} title="Symptom Analysis" badge={`${p1} → ${p2}`} />}
+        </div>
         <FundamentalGroupedValues values={values} p1={p1} p2={p2} />
       </div>
       <div className="empty-note" style={{ padding: '.9rem 1.4rem 0' }}>
@@ -427,6 +440,37 @@ function SymptomTree({ rows, p1, p2 }: { rows: FunnelTreeRow[]; p1: string; p2: 
           <SymptomTreeNode key={n.key} node={n} seq={seq} />
         ))}
       </ul>
+    </div>
+  );
+}
+
+// The funnel tree on its own — rendered to the right of a metrics table so
+// the empty half of a narrow table earns its keep.
+export function SymptomTreePanel({ tree, p1, p2, title, badge }: { tree: FunnelTreeRow[]; p1: string; p2: string; title?: string; badge?: string }) {
+  return (
+    <div className="sympt-panel">
+      {title && (
+        <div className="sympt-panel-head">
+          <span className="sympt-panel-title">{title}</span>
+          {badge && <span className="sec-badge">{badge}</span>}
+        </div>
+      )}
+      <SymptomTree rows={tree} p1={p1} p2={p2} />
+    </div>
+  );
+}
+
+// The plain-language read (headline + points + verdict) on its own.
+export function SymptomSummaryPanel({ summary }: { summary: SymptomSummary }) {
+  return (
+    <div className={`sympt-summary sympt-summary-${summary.gmvDir}`}>
+      <div className="sympt-summary-headline">{summary.headline}</div>
+      <ul className="sympt-summary-points">
+        {summary.points.map((pt, i) => (
+          <li key={i}>{pt}</li>
+        ))}
+      </ul>
+      <div className="sympt-summary-verdict">Kesimpulan: {summary.verdict}</div>
     </div>
   );
 }

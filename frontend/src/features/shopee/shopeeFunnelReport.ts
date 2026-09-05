@@ -59,9 +59,22 @@ export interface ChannelMixEntry {
   roas: number;
 }
 
+// One ad channel's own funnel, so each channel section can show which stage
+// moved *its* GMV — the account-level tree can't tell you whether a drop came
+// from Iklan Produk or Iklan Toko. Live has no impression/click columns, so it
+// only gets a tree when its export happens to carry them.
+export interface ChannelFunnel {
+  key: 'produk' | 'toko' | 'live';
+  label: string;
+  tree: FunnelTreeRow[];
+  symptom: SymptomSummary;
+}
+
 export interface ShopeeFunnelReport {
   values: FunnelValueRow[];
   tree: FunnelTreeRow[];
+  // Per-channel funnels, in the same order the channel sections render.
+  channels: ChannelFunnel[];
   // Plain-language read of the funnel movement (headline + points + verdict).
   symptom: SymptomSummary;
   // Current-period spend/GMV per ad channel (only channels with data).
@@ -112,9 +125,27 @@ export function buildShopeeFunnelReport(input: BuildShopeeFunnelReportInput): Sh
     channelMix.push(mixEntry('live', 'Iklan Live', '#7c3aed', sumFunnelChannel(input.liveCur).spend, liveCurGmv));
   }
 
+  // A channel only earns a tree if it actually reports the funnel columns —
+  // Iklan Live normally reports viewers, not impressions/clicks, and an
+  // all-zero tree would read as a real collapse rather than "no data".
+  const channelFunnel = (key: ChannelFunnel['key'], label: string, oldRows: SheetRow[], curRows: SheetRow[]): ChannelFunnel | null => {
+    const so = sumFunnelChannel(oldRows);
+    const sc = sumFunnelChannel(curRows);
+    if (!(so.impressions || sc.impressions || so.clicks || sc.clicks)) return null;
+    const co = funnelMetrics(so, input.omzetOld);
+    const cc = funnelMetrics(sc, input.omzetCur);
+    return { key, label, tree: buildFunnelTree(co, cc), symptom: buildSymptomSummary(co, cc) };
+  };
+  const channels = [
+    channelFunnel('produk', 'Iklan Produk', input.produkOld, input.produkCur),
+    channelFunnel('toko', 'Iklan Toko', input.tokoOld, input.tokoCur),
+    channelFunnel('live', 'Iklan Live', input.liveOld, input.liveCur),
+  ].filter((c): c is ChannelFunnel => c !== null);
+
   return {
     values: buildFunnelValues(mOld, mCur),
     tree: buildFunnelTree(mOld, mCur),
+    channels,
     symptom: buildSymptomSummary(mOld, mCur),
     channelMix: channelMix.filter((e) => e.spend > 0 || e.gmv > 0),
     liveGmv: { old: liveOldGmv, cur: liveCurGmv, hasData: liveOldGmv > 0 || liveCurGmv > 0 },

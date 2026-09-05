@@ -1,11 +1,12 @@
 import { KpiTable } from '../../components/KpiTable';
 import { PeriodWarningBanner } from '../../components/PeriodWarningBanner';
 import { ReportPages } from '../../components/ReportPages';
+import { SectionAccordion } from '../../components/SectionAccordion';
 import { SectionDownloadButton } from '../../components/SectionDownloadButton';
 import type { DailyTrendMetricSelection } from '../../lib/shopeeDeepDiveInsights';
 import type { MetricSelection } from '../../lib/shopeeDeepDiveItemPivot';
 import { ChannelPivotSection, DailyTrendSection, ItemPivotSection, TingkatkanDenganIklanTable, UnadvertisedProductsTable, UncategorizedPanel } from './DeepDiveSections';
-import { FundamentalAnalysisSection, ParetoAnalysisSection, ProductRankingSection, SymptomAnalysisSection } from './AnalysisSections';
+import { FundamentalAnalysisSection, ParetoAnalysisSection, ProductRankingSection } from './AnalysisSections';
 import { ChannelContributionSection } from './ChannelContributionSection';
 import type { ShopeeDeepDiveReport } from './shopeeDeepDiveReport';
 import type { ShopeeFunnelReport } from './shopeeFunnelReport';
@@ -48,21 +49,61 @@ export function ShopeeReportSections({
   onItemPivotTabChange,
   onSaveCategory,
 }: ShopeeReportSectionsProps) {
-  // ~14 cards used to be one long scroll — now split across 4 tabbed pages.
+  const channelFunnel = (key: 'produk' | 'toko' | 'live') => funnelReport?.channels.find((c) => c.key === key);
+
+  // ~14 cards used to be one long scroll — now split across tabbed pages, and
+  // within a page only one section is expanded at a time.
   const pages = [
     {
       id: 'ringkasan',
       label: 'Ads Performance',
       content: (
-        <>
-          {/* Fundamental Analysis leads this page — it replaced the old "Iklan
-              Shopee Overall" pivot, which showed the same account-level totals
-              with none of the funnel decomposition. It lives here only; the
-              Funnel & Diagnosa page no longer repeats it. */}
-          {funnelReport && <FundamentalAnalysisSection values={funnelReport.values} liveGmv={funnelReport.liveGmv} p1={report.p1} p2={report.p2} />}
-          <ChannelPivotSection title="Iklan Produk" badge="+ Iklan Produk Otomatis" rows={deepDive.produk} p1={report.p1} p2={report.p2} />
-          {hasTokoData && <ChannelPivotSection title="Iklan Toko" badge="Shop+ Ads" rows={deepDive.toko} p1={report.p1} p2={report.p2} />}
-          {hasLiveData && <ChannelPivotSection title="Iklan Live" badge="Penonton-based" rows={deepDive.live} p1={report.p1} p2={report.p2} />}
+        <SectionAccordion>
+          {/* Fundamental Analysis leads: it replaced the old "Iklan Shopee
+              Overall" pivot (same totals, none of the funnel decomposition),
+              and now carries the account-level Symptom tree + read that used
+              to live on a separate Funnel & Diagnosa page. */}
+          {funnelReport && (
+            <FundamentalAnalysisSection
+              values={funnelReport.values}
+              liveGmv={funnelReport.liveGmv}
+              tree={funnelReport.tree}
+              symptom={funnelReport.symptom}
+              p1={report.p1}
+              p2={report.p2}
+            />
+          )}
+          <ChannelPivotSection
+            title="Iklan Produk"
+            badge="+ Iklan Produk Otomatis"
+            rows={deepDive.produk}
+            p1={report.p1}
+            p2={report.p2}
+            tree={channelFunnel('produk')?.tree}
+            symptom={channelFunnel('produk')?.symptom}
+          />
+          {hasTokoData && (
+            <ChannelPivotSection
+              title="Iklan Toko"
+              badge="Shop+ Ads"
+              rows={deepDive.toko}
+              p1={report.p1}
+              p2={report.p2}
+              tree={channelFunnel('toko')?.tree}
+              symptom={channelFunnel('toko')?.symptom}
+            />
+          )}
+          {hasLiveData && (
+            <ChannelPivotSection
+              title="Iklan Live"
+              badge="Penonton-based"
+              rows={deepDive.live}
+              p1={report.p1}
+              p2={report.p2}
+              tree={channelFunnel('live')?.tree}
+              symptom={channelFunnel('live')?.symptom}
+            />
+          )}
           {funnelReport && <ChannelContributionSection mix={funnelReport.channelMix} periodLabel={report.p2} />}
           {report.productOverviewRows && (
             <div className="sec-block">
@@ -75,16 +116,7 @@ export function ShopeeReportSections({
               </div>
             </div>
           )}
-        </>
-      ),
-    },
-    {
-      id: 'funnel',
-      label: 'Funnel & Diagnosa',
-      content: funnelReport ? (
-        <SymptomAnalysisSection tree={funnelReport.tree} summary={funnelReport.symptom} p1={report.p1} p2={report.p2} />
-      ) : (
-        <div className="empty-note" style={{ padding: '1.4rem' }}>Funnel &amp; diagnosa butuh data Iklan Produk 2 periode.</div>
+        </SectionAccordion>
       ),
     },
     {

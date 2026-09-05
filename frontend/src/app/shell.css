@@ -806,3 +806,55 @@
 .dual-select-hint{font-size:.64rem;color:var(--muted2);font-weight:500;line-height:1.35}
 .howto-col-req{font-weight:750;color:var(--text)}
 .howto-col-note{font-weight:400;color:var(--muted);font-size:.9em}
+
+/* ══════════════════════════════════════════════════════
+   SHOPEE REPORT — table beside its funnel tree, one section open at a time.
+   Plain tokens only (no color-mix) — these render into PNG/PDF export.
+   ══════════════════════════════════════════════════════ */
+
+/* The metrics table is capped so the metric names sit near their numbers;
+   the freed right half carries that section's Symptom tree, which explains
+   the very movement the table is showing. */
+.sec-split{
+  display:grid;grid-template-columns:minmax(0,600px) minmax(0,1fr);
+  gap:1.5rem;align-items:start;
+}
+.sec-split-padded{padding:0 1.4rem 1.2rem}
+.sec-split-main{min-width:0}
+/* Inside the split the table already has its own column — let it fill it. */
+.sec-split-main .kpi-compact,.sec-split-main .fg-table,.sec-split-main .fa-overall-table{max-width:none}
+@media(max-width:1180px){
+  .sec-split{grid-template-columns:minmax(0,1fr);gap:1.1rem}
+}
+
+/* The tree, as a companion panel rather than a second competing card. */
+.sympt-panel{
+  min-width:0;background:var(--s2);border:1px solid var(--border);
+  border-radius:14px;padding:.9rem 1.1rem 1.1rem;
+}
+.sympt-panel-head{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem}
+.sympt-panel-title{font-size:.82rem;font-weight:800;color:var(--shopee);letter-spacing:-.01em}
+.sympt-panel .symptom-tree{--st-node-h:38px}
+.sympt-panel .st-node{background:var(--surface)}
+.sympt-panel .st-label{min-width:0;font-size:.79rem}
+.sympt-panel .st-vals{font-size:.68rem}
+
+/* ── Accordion: one section expanded at a time ─────────────────────────────
+   Every section renders its own .sec-block + .sec-heading, so the wrapper
+   collapses everything after the heading rather than re-plumbing each one.
+   Disabled entirely during a PNG/PDF capture — an export must contain every
+   section, not just the one the user happened to leave open. */
+.sec-acc-item .sec-heading{cursor:pointer;user-select:none}
+.sec-acc-item .sec-heading:hover{background:linear-gradient(180deg,#eef1f8,#e9edf6)}
+.sec-acc-item .sec-heading::after{
+  content:'';margin-left:.55rem;flex-shrink:0;
+  width:8px;height:8px;border-right:2px solid var(--muted2);border-bottom:2px solid var(--muted2);
+  transform:rotate(45deg) translate(-2px,-2px);transition:transform .25s var(--ease-out);
+}
+.sec-acc-item.open .sec-heading::after{transform:rotate(-135deg) translate(-3px,-3px)}
+/* .sec-download-btn already carries margin-left:auto, so the caret lands last. */
+.sec-acc-item .sec-heading .sec-download-btn{margin-left:auto}
+.sec-acc-item .sec-heading .sec-download-btn ~ .sec-download-btn{margin-left:0}
+body:not(.pdf-export-mode) .sec-acc-item:not(.open) .sec-block > *:not(.sec-heading){display:none}
+body:not(.pdf-export-mode) .sec-acc-item:not(.open) .sec-block{box-shadow:var(--shadow-sm)}
+.sec-acc-item.open > .sec-block{animation:none}

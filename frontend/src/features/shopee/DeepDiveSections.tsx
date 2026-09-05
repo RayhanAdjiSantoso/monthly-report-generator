@@ -9,7 +9,10 @@ import { validateFormula } from '../../lib/formula';
 import { DAILY_TREND_BUILTIN_METRICS, dailyTrendSelectionId, dailyTrendSelectionLabel, type DailyTrendMetricSelection, type DailyTrendPivotRow, type ProductPerformanceRow } from '../../lib/shopeeDeepDiveInsights';
 import { ITEM_BUILTIN_METRICS, metricSelectionId, metricSelectionLabel, type KeywordPivotRow, type MetricSelection, type ProdukPivotRow } from '../../lib/shopeeDeepDiveItemPivot';
 import { fmtPivotVal, type PivotFmt, type PivotRow } from '../../lib/shopeeDeepDivePivot';
+import type { FunnelTreeRow } from '../../lib/shopeeFunnel';
+import type { SymptomSummary } from '../../lib/shopeeFunnelSummary';
 import type { SheetRow } from '../../lib/types';
+import { SymptomSummaryPanel, SymptomTreePanel } from './AnalysisSections';
 
 // ══════════════════════════════════════════════════════
 // FASE 3 — SHOPEE DEEP-DIVE UI building blocks. Kept separate from
@@ -20,15 +23,51 @@ import type { SheetRow } from '../../lib/types';
 // Rename/reorder/show-hide-and-readd for every metric row is handled
 // entirely by KpiTable now (rows all default visible, matching the previous
 // behavior of this section) — no local picker state needed here anymore.
-export function ChannelPivotSection({ title, badge, rows, p1, p2 }: { title: string; badge: string; rows: PivotRow[]; p1: string; p2: string }) {
+export function ChannelPivotSection({
+  title,
+  badge,
+  rows,
+  p1,
+  p2,
+  tree,
+  symptom,
+}: {
+  title: string;
+  badge: string;
+  rows: PivotRow[];
+  p1: string;
+  p2: string;
+  // This channel's own funnel tree + read. The table is capped narrow, so the
+  // right half shows which stage moved *this* channel — the account-level
+  // tree can't tell you whether a drop came from Produk or Toko.
+  tree?: FunnelTreeRow[];
+  symptom?: SymptomSummary;
+}) {
   const kpiRows: KpiRowDisplay[] = rows.map((r) => ({ id: r.key, label: r.label, old: r.old, cur: r.cur, delta: r.delta, cls: r.cls }));
+  const table = (
+    <KpiTable rows={kpiRows} p1={p1} p2={p2} emptyMessage="Semua metrik disembunyikan — pilih dari '+ Tambah metrik' untuk menampilkannya kembali." padded />
+  );
   return (
     <div className="sec-block">
       <div className="sec-heading shopee-heading">
         {title} <span className="sec-badge">{badge}</span>
         <SectionDownloadButton />
       </div>
-      <KpiTable rows={kpiRows} p1={p1} p2={p2} emptyMessage="Semua metrik disembunyikan — pilih dari '+ Tambah metrik' untuk menampilkannya kembali." padded />
+      {tree ? (
+        <>
+          <div className="sec-split sec-split-padded">
+            <div className="sec-split-main">{table}</div>
+            <SymptomTreePanel tree={tree} p1={p1} p2={p2} title="Symptom Analysis" badge={title} />
+          </div>
+          {symptom && (
+            <div style={{ padding: '0 1.4rem 1.2rem' }}>
+              <SymptomSummaryPanel summary={symptom} />
+            </div>
+          )}
+        </>
+      ) : (
+        table
+      )}
     </div>
   );
 }
