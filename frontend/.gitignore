@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# UI/UX Pro Max skill (local design-reference pack for Claude Code — ~4.5 MB,
+# no runtime/build impact). Reinstall with: npx ui-ux-pro-max-cli init --ai claude
+.claude/
