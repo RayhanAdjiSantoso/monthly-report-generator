@@ -52,10 +52,14 @@ export function ShopeeReportSections({
   const pages = [
     {
       id: 'ringkasan',
-      label: 'Ringkasan & Channel',
+      label: 'Ads Performance',
       content: (
         <>
-          <ChannelPivotSection title="Iklan Shopee Overall" badge="Semua Channel" rows={deepDive.overall} p1={report.p1} p2={report.p2} />
+          {/* Fundamental Analysis leads this page — it replaced the old "Iklan
+              Shopee Overall" pivot, which showed the same account-level totals
+              with none of the funnel decomposition. It lives here only; the
+              Funnel & Diagnosa page no longer repeats it. */}
+          {funnelReport && <FundamentalAnalysisSection values={funnelReport.values} liveGmv={funnelReport.liveGmv} p1={report.p1} p2={report.p2} />}
           <ChannelPivotSection title="Iklan Produk" badge="+ Iklan Produk Otomatis" rows={deepDive.produk} p1={report.p1} p2={report.p2} />
           {hasTokoData && <ChannelPivotSection title="Iklan Toko" badge="Shop+ Ads" rows={deepDive.toko} p1={report.p1} p2={report.p2} />}
           {hasLiveData && <ChannelPivotSection title="Iklan Live" badge="Penonton-based" rows={deepDive.live} p1={report.p1} p2={report.p2} />}
@@ -78,10 +82,7 @@ export function ShopeeReportSections({
       id: 'funnel',
       label: 'Funnel & Diagnosa',
       content: funnelReport ? (
-        <>
-          <FundamentalAnalysisSection values={funnelReport.values} liveGmv={funnelReport.liveGmv} p1={report.p1} p2={report.p2} />
-          <SymptomAnalysisSection tree={funnelReport.tree} summary={funnelReport.symptom} p1={report.p1} p2={report.p2} />
-        </>
+        <SymptomAnalysisSection tree={funnelReport.tree} summary={funnelReport.symptom} p1={report.p1} p2={report.p2} />
       ) : (
         <div className="empty-note" style={{ padding: '1.4rem' }}>Funnel &amp; diagnosa butuh data Iklan Produk 2 periode.</div>
       ),

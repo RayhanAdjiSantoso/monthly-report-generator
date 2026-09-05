@@ -11,7 +11,7 @@
      --page-x is the breathing room on the page edges — deliberately small so
      content uses the full width instead of sitting in a narrow centered
      column. */
-  --nav-h:66px;
+  --nav-h:66px;--gen-rail-h:58px;
   --page-x:clamp(18px,4.5vw,64px);
   --content-max:1320px;
   --gen-main-max:1180px;

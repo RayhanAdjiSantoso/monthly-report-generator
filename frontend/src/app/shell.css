@@ -262,75 +262,76 @@
 
 /* ── Generator page frame ───────────────────────────────────────────────── */
 /* Wider than the marketing pages on purpose — the reports/charts want room.
-   Overrides .bleed's narrower cap + trims the side padding so the sidebar
-   sits close to the viewport edge and the content fills the rest. */
+   Overrides .bleed's narrower cap + trims the side padding. The rail, the
+   header and the content all share this frame so their edges line up. */
 .gen-wrap.bleed,
+.gen-rail-inner.bleed,
 .site-header.wide-frame .site-header-inner.bleed{
   max-width:min(1840px,calc(100vw - 2rem));
   padding-inline:clamp(14px,2.4vw,40px);
 }
-.gen-wrap{
-  padding-block:clamp(1.4rem,3vw,2.4rem) 5rem;
-  display:grid;grid-template-columns:258px minmax(0,1fr);gap:clamp(1.3rem,2.6vw,2.4rem);
-  align-items:start;
-}
-.gen-sidebar{
-  position:sticky;top:calc(66px + 1.6rem);
-  background:var(--surface);border:1px solid var(--border);border-radius:18px;
-  box-shadow:var(--shadow-sm);padding:.75rem;
-}
-.gen-sidebar-title{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.13em;color:var(--muted2);padding:.15rem .55rem .8rem}
-.gen-sidebar-nav{position:relative;display:flex;flex-direction:column;gap:4px}
-.gen-sidebar-item{position:relative}
+.gen-wrap{padding-block:clamp(1.1rem,2.4vw,1.9rem) 5rem}
 
-.gen-sidebar-link{
+/* ── Report-type rail ──────────────────────────────────────────────────────
+   Was a 258px left column; a list you touch once per session shouldn't cost a
+   quarter of the width on every page. Now a glassy bar that sticks directly
+   under the site header — it offsets by --nav-h so the two never overlap, and
+   .report-tabs below offsets by --nav-h + --gen-rail-h in turn. */
+.gen-rail{
+  position:sticky;top:var(--nav-h);z-index:26;
+  background:rgba(251,252,254,.86);
+  -webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);
+  border-top:1px solid color-mix(in srgb,var(--border) 55%,transparent);
+  border-bottom:1px solid var(--border);
+  box-shadow:0 1px 16px rgba(15,26,58,.045);
+}
+.gen-rail-inner{
+  display:flex;align-items:center;gap:5px;
+  height:var(--gen-rail-h);
+  overflow-x:auto;scrollbar-width:none;
+}
+.gen-rail-inner::-webkit-scrollbar{display:none}
+.gen-rail-item{flex:0 0 auto}
+.gen-rail-sep{flex:0 0 auto;width:1px;height:22px;margin:0 .5rem;background:var(--border)}
+.gen-rail-link{
   position:relative;z-index:1;isolation:isolate;
-  display:flex;align-items:center;gap:10px;padding:.58rem .6rem;border-radius:12px;
-  text-decoration:none;font-size:.88rem;font-weight:600;color:var(--muted);letter-spacing:-.015em;white-space:nowrap;
+  display:flex;align-items:center;gap:9px;white-space:nowrap;
+  padding:.5rem .8rem;border-radius:11px;text-decoration:none;
+  font-size:.855rem;font-weight:640;letter-spacing:-.015em;color:var(--muted);
   transition:color .22s var(--ease-out);
 }
-/* The gliding highlight — a full-row soft pill, brand-tinted to the active item. */
-.gen-sidebar-pill{
-  position:absolute;inset:0;z-index:-1;border-radius:13px;
-  background:var(--gs-tint,var(--acc-100));
-  box-shadow:0 4px 16px rgba(15,26,58,.07),inset 0 0 0 1px rgba(15,26,58,.035);
+/* The gliding highlight — brand-tinted to whichever report is active. */
+.gen-rail-pill{
+  position:absolute;inset:0;z-index:-1;border-radius:11px;
+  background:var(--gr-tint,var(--acc-100));
+  box-shadow:0 2px 10px rgba(15,26,58,.07),inset 0 0 0 1px rgba(15,26,58,.04);
 }
-.gen-sidebar-link:hover:not(.active){color:var(--text)}
-.gen-sidebar-link:hover:not(.active) .gen-sidebar-ico{border-color:var(--gs-accent,var(--acc));color:var(--gs-accent,var(--acc))}
-.gen-sidebar-link.active{color:var(--gs-accent,var(--acc));font-weight:750}
-
-.gen-sidebar-ico{
-  width:30px;height:30px;flex-shrink:0;border-radius:9px;
+.gen-rail-link:hover:not(.active){color:var(--text)}
+.gen-rail-link:hover:not(.active) .gen-rail-ico{border-color:var(--gr-accent,var(--acc));color:var(--gr-accent,var(--acc))}
+.gen-rail-link.active{color:var(--gr-accent,var(--acc));font-weight:750}
+.gen-rail-link:focus-visible{outline:2px solid var(--gr-accent,var(--acc));outline-offset:2px}
+.gen-rail-ico{
+  width:26px;height:26px;flex-shrink:0;border-radius:8px;
   display:flex;align-items:center;justify-content:center;
   background:var(--surface);border:1px solid var(--border);color:var(--muted2);
   transition:background .22s var(--ease-out),color .22s var(--ease-out),border-color .22s;
 }
-.gen-sidebar-ico-svg{width:16px;height:16px}
-.gen-sidebar-link.active .gen-sidebar-ico{
-  background:var(--gs-accent,var(--acc));border-color:transparent;color:#fff;
-  box-shadow:0 4px 12px color-mix(in srgb,var(--gs-accent,var(--acc)) 30%,transparent);
+.gen-rail-ico-svg{width:15px;height:15px}
+.gen-rail-link.active .gen-rail-ico{
+  background:var(--gr-accent,var(--acc));border-color:transparent;color:#fff;
+  box-shadow:0 3px 10px color-mix(in srgb,var(--gr-accent,var(--acc)) 32%,transparent);
 }
-.gen-sidebar-label{flex:1;min-width:0}
-.gen-sidebar-badge{font-size:.62rem;font-weight:800;color:var(--muted2);font-variant-numeric:tabular-nums lining-nums}
-.gen-sidebar-link.active .gen-sidebar-badge{color:var(--gs-accent,var(--acc))}
-
-.gen-sidebar-help{
-  margin-top:.9rem;display:flex;gap:.6rem;align-items:flex-start;
-  padding:.8rem .85rem;border-radius:13px;
-  background:var(--s2);border:1px solid var(--border);
+.gen-rail-badge{
+  flex-shrink:0;font-size:.6rem;font-weight:800;line-height:1;
+  color:var(--muted2);background:var(--s2);border-radius:5px;padding:.2rem .35rem;
+  font-variant-numeric:tabular-nums lining-nums;
 }
-.gen-sidebar-help-ico{
-  flex:0 0 auto;width:28px;height:28px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  background:var(--acc-100);color:var(--acc);
-}
-.gen-sidebar-help-body{display:flex;flex-direction:column;gap:.15rem;min-width:0}
-.gen-sidebar-help-title{font-size:.76rem;font-weight:750;color:var(--text);letter-spacing:-.01em}
-.gen-sidebar-help-sub{font-size:.68rem;line-height:1.45;color:var(--muted2)}
-.gen-sidebar-help-sub em{font-style:normal;font-weight:650;color:var(--muted)}
+.gen-rail-link.active .gen-rail-badge{color:var(--gr-accent,var(--acc));background:var(--surface)}
+/* "done" = the ✓ state; a dot reads cleaner than a glyph at this size. */
+.gen-rail-badge.done{width:7px;height:7px;padding:0;border-radius:50%;background:var(--good)}
 
 .gen-main{max-width:none;min-width:0}
-.gen-head{margin-bottom:1.9rem;display:flex;align-items:center;justify-content:space-between;gap:2rem}
+.gen-head{margin-top:.35rem;margin-bottom:1.9rem;display:flex;align-items:center;justify-content:space-between;gap:2rem}
 .gen-head-text{flex:1;min-width:0}
 .gen-head-eyebrow{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em}
 .gen-head-title{margin-top:.4rem;font-size:clamp(1.7rem,3.2vw,2.35rem);font-weight:800;letter-spacing:-.03em;color:var(--text)}
@@ -620,7 +621,7 @@
    on a stronger shadow once it's stuck there. */
 .report-tabs{
   --rt-accent:var(--shopee);
-  position:sticky;top:calc(var(--nav-h) + 10px);z-index:25;
+  position:sticky;top:calc(var(--nav-h) + var(--gen-rail-h) + 10px);z-index:25;
   display:inline-flex;max-width:100%;gap:2px;padding:5px;margin:0 0 1.7rem;
   border-radius:15px;border:1px solid var(--border);
   background:rgba(240,242,248,.72);
@@ -783,23 +784,15 @@
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media(max-width:920px){
-  .gen-wrap{grid-template-columns:1fr;padding-bottom:4rem}
-  .gen-sidebar{
-    position:static;display:flex;gap:.4rem;overflow-x:auto;
-    padding:0 0 .4rem;background:none;border:0;border-radius:0;box-shadow:none;scrollbar-width:thin;
-  }
-  .gen-sidebar-title{display:none}
-  .gen-sidebar-nav{flex-direction:row;gap:.4rem}
-  .gen-sidebar-link{flex:0 0 auto;border:1px solid var(--border);font-size:.82rem;padding:.5rem .8rem}
-  .gen-sidebar-link.active{font-size:.82rem;padding:.5rem .8rem .5rem 1rem;background:var(--gs-tint,var(--acc-100));border-color:var(--gs-accent,var(--acc))}
-  .gen-sidebar-link.active::before{left:.3rem;top:22%;bottom:22%}
-  .gen-sidebar-badge{display:none}
-  .gen-sidebar-pill{display:none}
-  .gen-sidebar-help{display:none}
+  .gen-wrap{padding-bottom:4rem}
+  .gen-rail-inner{gap:3px}
+  .gen-rail-link{padding:.45rem .6rem;font-size:.8rem;gap:7px}
+  .gen-rail-ico{width:24px;height:24px}
+  .gen-rail-badge{display:none}
 }
 @media(max-width:620px){
   .site-brand-name{display:none}
-  .site-header-inner{grid-template-columns:auto 1fr;gap:10px}
+  .site-header-inner{grid-template-columns:auto 1fr auto;gap:10px}
   .site-nav{justify-self:end;gap:2px}
   .site-nav-link{font-size:.9rem;padding:.4rem .6rem}
   .site-header-spacer{display:none}

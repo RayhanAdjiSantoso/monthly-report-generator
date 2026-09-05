@@ -9,7 +9,7 @@ import { ReportsTab } from '../features/reports/ReportsTab';
 import { BrandSettingsPage } from '../features/brands/BrandSettingsPage';
 import { Reveal } from '../components/Reveal';
 import { HeaderIllustration } from '../components/HeaderIllustration';
-import { GenSidebar } from './GenSidebar';
+import { GenTopNav } from './GenTopNav';
 import { isReportKey, reportByKey, type ReportKey } from './reports';
 import type { BizChannelMetrics, BizMetricKey, BizPeriod, BizRow, BizState } from '../lib/business';
 import type { PlatformKey, PlatformResultData, PlatformStateMap } from '../lib/summary';
@@ -48,10 +48,11 @@ export function GeneratorShell(props: GeneratorShellProps) {
   const active = reportByKey(activeTab);
 
   return (
-    <div className="gen-wrap bleed">
-      <GenSidebar badges={props.badges} />
+    <>
+      <GenTopNav badges={props.badges} />
 
-      <div className="gen-main" id="app">
+      <div className="gen-wrap bleed">
+        <div className="gen-main" id="app">
         <Reveal className="gen-head" key={activeTab}>
           <div className="gen-head-text">
             <span className="gen-head-eyebrow" style={{ color: active.accent }}>
@@ -106,7 +107,8 @@ export function GeneratorShell(props: GeneratorShellProps) {
         <SummaryTab isActive={activeTab === 'summary'} platformState={props.platformState} bizState={props.bizState} />
           </>
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
