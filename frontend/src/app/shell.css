@@ -556,44 +556,57 @@
 .sympt-summary-verdict{margin-top:.85rem;padding-top:.75rem;border-top:1px dashed var(--border);font-size:.84rem;font-weight:650;line-height:1.5;color:var(--text)}
 
 /* ── Symptom Analysis: nested funnel tree ───────────────────────────────── */
-/* A real recursive <ul>/<li> tree. Each subtree (.st-children) draws ONE
-   continuous vertical rail with a solid elbow into every child node; nodes +
-   rails animate in with a downward stagger keyed off the --i counter. */
-.symptom-tree{--st-line:#e88a6b;--st-node-h:44px}
+/* A real recursive <ul>/<li> tree. Weight comes from depth, not from drawing
+   thirteen identical cards: the root is a solid tinted header, depth-1 (the
+   drivers — Transaction / AOV) are surfaced cards, deeper levels are quiet
+   rows that only surface on hover. Connectors are hairlines in a neutral so
+   the structure recedes and the numbers lead. */
+.symptom-tree{--st-line:#d9dfeb;--st-node-h:34px}
 .symptom-tree-head{
-  display:flex;justify-content:space-between;font-size:.62rem;font-weight:800;text-transform:uppercase;
-  letter-spacing:.07em;color:var(--muted2);padding:0 .2rem .6rem;
+  display:flex;justify-content:space-between;gap:1rem;font-size:.6rem;font-weight:800;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted2);padding:0 .55rem .5rem;
 }
 .symptom-tree ul{list-style:none}
 .symptom-tree .st-root-list{margin:0;padding:0}
-.symptom-tree .st-children{position:relative;margin:0 0 0 22px;padding:0 0 0 24px}
-.st-children::before{                       /* the level's vertical rail */
-  content:'';position:absolute;left:2px;top:0;bottom:calc(var(--st-node-h) - 22px + .34rem);
-  width:2.5px;border-radius:2px;background:var(--st-line);
+.symptom-tree .st-children{position:relative;margin:0 0 0 15px;padding:0 0 0 17px}
+.st-children::before{                        /* the level's vertical rail */
+  content:'';position:absolute;left:0;top:0;bottom:calc(var(--st-node-h) / 2 + .18rem);
+  width:1.5px;border-radius:2px;background:var(--st-line);
   transform-origin:top;animation:st-rail .5s var(--ease-out) both;
 }
 .st-item{position:relative}
-.st-item > .st-node::before{                 /* solid elbow rail → node */
-  content:'';position:absolute;left:-24px;top:22px;width:24px;height:2.5px;border-radius:2px;
+.st-item > .st-node::before{                 /* hairline elbow → node */
+  content:'';position:absolute;left:-17px;top:calc(var(--st-node-h) / 2 + .18rem);
+  width:17px;height:1.5px;border-radius:2px;
   background:var(--st-line);transform-origin:left;
-  animation:st-elbow .32s var(--ease-out) both;animation-delay:calc(var(--i,0) * 40ms + 150ms);
+  animation:st-elbow .32s var(--ease-out) both;animation-delay:calc(var(--i,0) * 34ms + 130ms);
 }
 
 .st-node{
   position:relative;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;
-  min-height:var(--st-node-h);padding:.55rem .9rem;margin:.34rem 0;border-radius:11px;
-  background:var(--surface);border:1px solid var(--border);
-  opacity:0;transform:translateX(-10px);
-  animation:st-node-in .5s var(--ease-out) forwards;animation-delay:calc(var(--i,0) * 40ms + 100ms);
+  min-height:var(--st-node-h);padding:.35rem .6rem;margin:.18rem 0;border-radius:9px;
+  background:transparent;border:1px solid transparent;
+  opacity:0;transform:translateX(-8px);
+  transition:background .16s var(--ease-out),border-color .16s var(--ease-out);
+  animation:st-node-in .45s var(--ease-out) forwards;animation-delay:calc(var(--i,0) * 34ms + 90ms);
 }
+.st-node:hover{background:var(--surface);border-color:var(--border)}
+/* Depth 1 = the two things GMV actually decomposes into — give them a card. */
+.st-node[data-depth="1"]{background:var(--surface);border-color:var(--border)}
+.st-node[data-depth="1"] .st-label{font-weight:750}
 .st-node.st-root{
-  background:linear-gradient(90deg,var(--shopee-100),var(--surface));
-  border-color:var(--shopee-300);
+  min-height:40px;padding:.5rem .75rem;margin-bottom:.3rem;
+  background:var(--shopee-100);border-color:var(--shopee-300);
 }
-.st-label{flex:1;min-width:130px;font-size:.84rem;font-weight:650;color:var(--text)}
-.st-node.st-root .st-label{font-weight:800}
-.st-vals{font-size:.72rem;color:var(--muted);font-weight:600}
-.st-arrow{color:var(--muted2)}
+.st-label{flex:1;min-width:0;font-size:.8rem;font-weight:600;color:var(--text);letter-spacing:-.01em}
+.st-node.st-root .st-label{font-weight:800;font-size:.86rem}
+/* One consistent numeric column so the eye can scan straight down. */
+.st-vals{
+  flex-shrink:0;font-size:.68rem;color:var(--muted);font-weight:600;text-align:right;
+  font-variant-numeric:tabular-nums lining-nums;
+}
+.st-arrow{color:var(--muted2);padding:0 .1rem}
+.st-node .delta-pill{flex-shrink:0;min-width:5.1rem;text-align:center}
 
 @keyframes st-node-in{to{opacity:1;transform:none}}
 @keyframes st-rail{from{transform:scaleY(0)}to{transform:scaleY(1)}}
@@ -603,9 +616,9 @@
   .st-children::before,.st-item > .st-node::before{animation:none}
 }
 @media(max-width:560px){
-  .st-children{margin-left:12px;padding-left:16px}
-  .st-item > .st-node::before{left:-16px;width:16px}
-  .st-vals{width:100%;order:3}
+  .st-children{margin-left:10px;padding-left:13px}
+  .st-item > .st-node::before{left:-13px;width:13px}
+  .st-vals{width:100%;order:3;text-align:left}
 }
 
 /* ============================================================================
@@ -816,10 +829,10 @@
    the freed right half carries that section's Symptom tree, which explains
    the very movement the table is showing. */
 .sec-split{
-  display:grid;grid-template-columns:minmax(0,600px) minmax(0,1fr);
+  display:grid;grid-template-columns:minmax(0,630px) minmax(0,1fr);
   gap:1.5rem;align-items:start;
 }
-.sec-split-padded{padding:0 1.4rem 1.2rem}
+.sec-split-padded{padding:1.1rem 1.4rem 1.2rem}
 .sec-split-main{min-width:0}
 /* Inside the split the table already has its own column — let it fill it. */
 .sec-split-main .kpi-compact,.sec-split-main .fg-table,.sec-split-main .fa-overall-table{max-width:none}
@@ -858,3 +871,17 @@
 body:not(.pdf-export-mode) .sec-acc-item:not(.open) .sec-block > *:not(.sec-heading){display:none}
 body:not(.pdf-export-mode) .sec-acc-item:not(.open) .sec-block{box-shadow:var(--shadow-sm)}
 .sec-acc-item.open > .sec-block{animation:none}
+
+/* Inside a split the table has ~600px, not the full card — the 9.5rem value
+   columns pushed CHANGES out of view behind .fg-scroll's overflow. Trim them,
+   and let a long period label (a full date range) wrap in the header instead
+   of forcing the column wider than the column it lives in. */
+.sec-split-main .kpi-compact th:not(:first-child),.sec-split-main .kpi-compact td:not(:first-child),
+.sec-split-main .fg-table th:not(:first-child),.sec-split-main .fg-table td:not(:first-child),
+.sec-split-main .fa-overall-table th:not(:first-child),.sec-split-main .fa-overall-table td:not(:first-child){width:6.4rem}
+.sec-split-main .kpi-compact th:not(:first-child),
+.sec-split-main .fg-table th:not(:first-child),
+.sec-split-main .fa-overall-table th:not(:first-child){white-space:normal}
+.sec-split-main .kpi-compact th,.sec-split-main .kpi-compact td,
+.sec-split-main .fg-table th,.sec-split-main .fg-table td,
+.sec-split-main .fa-overall-table th,.sec-split-main .fa-overall-table td{padding-left:.65rem;padding-right:.65rem}

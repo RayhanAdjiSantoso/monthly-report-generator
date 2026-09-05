@@ -356,11 +356,15 @@ export function FundamentalAnalysisSection({
         <div className="sec-split">
           <div className="sec-split-main">
             <OverallAdsTable values={values} p1={p1} p2={p2} />
-            {symptom && <SymptomSummaryPanel summary={symptom} />}
+          </div>
+          {symptom && <SymptomSummaryPanel summary={symptom} />}
+        </div>
+        <div className="sec-split">
+          <div className="sec-split-main">
+            <FundamentalGroupedValues values={values} p1={p1} p2={p2} />
           </div>
           {tree && <SymptomTreePanel tree={tree} p1={p1} p2={p2} title="Symptom Analysis" badge={`${p1} → ${p2}`} />}
         </div>
-        <FundamentalGroupedValues values={values} p1={p1} p2={p2} />
       </div>
       <div className="empty-note" style={{ padding: '.9rem 1.4rem 0' }}>
         <strong>Catatan ATC:</strong> "Tambah ke Keranjang" hanya dilaporkan oleh Iklan Produk (Iklan Toko tidak punya kolomnya). Node
@@ -406,7 +410,7 @@ function SymptomTreeNode({ node, seq }: { node: SymptomNode; seq: { i: number } 
   const i = seq.i++;
   return (
     <li className="st-item">
-      <div className={`st-node${node.depth === 0 ? ' st-root' : ''}`} style={{ '--i': i } as CSSProperties}>
+      <div className={`st-node${node.depth === 0 ? ' st-root' : ''}`} data-depth={node.depth} style={{ '--i': i } as CSSProperties}>
         <span className="st-label">{node.label}</span>
         <span className="st-vals num">
           {fmtPivotVal(node.oldNum, node.fmt)} <span className="st-arrow">→</span> {fmtPivotVal(node.curNum, node.fmt)}
