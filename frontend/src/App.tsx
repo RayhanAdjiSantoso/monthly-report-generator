@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { AppShell } from './app/AppShell';
 import { HomePage } from './app/HomePage';
 import { GeneratorShell } from './app/GeneratorShell';
@@ -74,13 +74,18 @@ function AppRoutes() {
   // doesn't remount the shell (upload state must survive).
   const groupKey = location.pathname.startsWith('/generate') ? 'gen' : location.pathname;
 
+  // No AnimatePresence here, deliberately. It used to wrap this in
+  // mode="wait", which withholds the incoming route until the outgoing one
+  // finishes its exit animation — and if that exit is interrupted (a fast
+  // second click, a re-render mid-transition) onExitComplete never fires and
+  // the new route is never mounted at all: a blank page that only a refresh
+  // clears. The keyed motion.div still gives the same fade-in on navigation,
+  // with nothing able to block the mount.
   return (
-    <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={groupKey}
         initial={reduce ? false : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={reduce ? undefined : { opacity: 0, y: -8 }}
         transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
       >
     <Routes location={location}>
@@ -117,7 +122,6 @@ function AppRoutes() {
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
       </motion.div>
-    </AnimatePresence>
   );
 }
 

@@ -28,16 +28,51 @@ const prefersReduced = () => window.matchMedia?.('(prefers-reduced-motion: reduc
 //
 // The heading click is caught on the wrapper, with the buttons inside it
 // (⬇ PNG / ⬇ Excel) excluded so they still work.
+//
+// Keyboard access comes from a real <button> laid over the heading rather than
+// role="button" on the heading itself: the heading already contains the export
+// buttons, and interactive content nested inside a button role is invalid and
+// unreliably exposed. As a sibling overlay the toggle keeps its own accessible
+// name (read off the heading text) while ⬇ PNG / ⬇ Excel stay reachable — they
+// just sit a layer above it.
 export function SectionAccordion({ children, defaultOpen = 0 }: { children: ReactNode; defaultOpen?: number }) {
   const items = Children.toArray(children).filter(Boolean);
   const [open, setOpen] = useState(defaultOpen);
   const refs = useRef<(HTMLDivElement | null)[]>([]);
   // Scroll only for a click, never for the initial render.
-  const pendingScroll = useRef<number | null>(null);
+  const pendingScroll = useRef<{ next: number; prev: number } | null>(null);
   const mounted = useRef(false);
 
   const blockOf = (i: number) => refs.current[i]?.querySelector<HTMLElement>('.sec-block') ?? null;
-  const headHeight = (block: HTMLElement) => block.querySelector<HTMLElement>('.sec-heading')?.offsetHeight ?? 56;
+  const headOf = (block: HTMLElement) => block.querySelector<HTMLElement>('.sec-heading');
+  const headHeight = (block: HTMLElement) => headOf(block)?.offsetHeight ?? 56;
+
+  // Wire the overlay toggle to its panel: the heading supplies the accessible
+  // name, and the overlay is sized to the heading so it never covers content.
+  useLayoutEffect(() => {
+    items.forEach((_, i) => {
+      const wrap = refs.current[i];
+      const block = blockOf(i);
+      if (!wrap || !block) return;
+      if (!block.id) block.id = `sec-acc-panel-${i}`;
+      const toggle = wrap.querySelector<HTMLButtonElement>('.sec-acc-toggle');
+      if (!toggle) return;
+      toggle.setAttribute('aria-controls', block.id);
+      wrap.style.setProperty('--acc-head-h', `${headHeight(block)}px`);
+      // Strip the export-button glyphs out of the name; they are their own
+      // controls and would otherwise read as part of the section title.
+      const head = headOf(block);
+      if (head) {
+        const name = Array.from(head.childNodes)
+          .filter((n) => !(n instanceof HTMLElement && (n.tagName === 'BUTTON' || n.tagName === 'A')))
+          .map((n) => n.textContent ?? '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (name) toggle.setAttribute('aria-label', name);
+      }
+    });
+  });
 
   useLayoutEffect(() => {
     items.forEach((_, i) => {
@@ -88,17 +123,33 @@ export function SectionAccordion({ children, defaultOpen = 0 }: { children: Reac
   }, [open, items.length]);
 
   useEffect(() => {
-    const i = pendingScroll.current;
+    const pending = pendingScroll.current;
     pendingScroll.current = null;
-    if (i === null || i !== open) return;
-    const el = refs.current[i];
+    if (pending === null || pending.next !== open) return;
+    const el = refs.current[pending.next];
     if (!el) return;
     const raf = requestAnimationFrame(() => {
-      const top = el.getBoundingClientRect().top + window.scrollY - stickyBottom() - 12;
+      // A section closing ABOVE this one is still at full height right now and
+      // will collapse over the next 420ms, pulling this section up with it.
+      // Scrolling to the position measured today lands it behind the header,
+      // so subtract the height that is about to disappear.
+      let collapsing = 0;
+      if (pending.prev !== -1 && pending.prev < pending.next) {
+        const prevBlock = blockOf(pending.prev);
+        if (prevBlock) collapsing = Math.max(0, prevBlock.getBoundingClientRect().height - headHeight(prevBlock));
+      }
+      const top = el.getBoundingClientRect().top + window.scrollY - collapsing - stickyBottom() - 12;
       window.scrollTo({ top: Math.max(0, top), behavior: prefersReduced() ? 'auto' : 'smooth' });
     });
     return () => cancelAnimationFrame(raf);
   }, [open]);
+
+  const toggle = (i: number) =>
+    setOpen((cur) => {
+      const next = cur === i ? -1 : i;
+      pendingScroll.current = { next, prev: cur };
+      return next;
+    });
 
   return (
     <div className="sec-accordion">
@@ -111,16 +162,20 @@ export function SectionAccordion({ children, defaultOpen = 0 }: { children: Reac
           className={`sec-acc-item${open === i ? ' open' : ''}`}
           onClickCapture={(e) => {
             const el = e.target as HTMLElement;
-            // Only the heading toggles — never the export buttons living in it.
+            // Mouse fallback for any part of the heading the overlay doesn't
+            // cover. Never the export buttons living in it, and never the
+            // overlay itself — that has its own handler and would double-fire.
             if (!el.closest('.sec-heading') || el.closest('button') || el.closest('a')) return;
             e.preventDefault();
-            setOpen((cur) => {
-              const next = cur === i ? -1 : i;
-              pendingScroll.current = next;
-              return next;
-            });
+            toggle(i);
           }}
         >
+          <button
+            type="button"
+            className="sec-acc-toggle"
+            aria-expanded={open === i}
+            onClick={() => toggle(i)}
+          />
           {child}
         </div>
       ))}

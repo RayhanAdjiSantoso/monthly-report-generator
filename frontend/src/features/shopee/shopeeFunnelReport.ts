@@ -10,12 +10,19 @@ import {
 import { buildSymptomSummary, type SymptomSummary } from '../../lib/shopeeFunnelSummary';
 import {
   buildPareto,
+  buildPotentialProducts,
+  buildProductPairChange,
   buildProductRankings,
   CONVERSION_METRIC_DEFS,
+  hasVisitorsCol,
   parseProductPerfRows,
+  PRODUCT_CHART_PAIRS,
   TRAFFIC_METRIC_DEFS,
   type ParetoRow,
+  type PotentialProduct,
+  type ProductChartPairDef,
   type ProductMetricRanking,
+  type ProductPairPoint,
 } from '../../lib/shopeeProductAnalysis';
 import { findShopeeCol, parseShopeeNum } from '../../lib/shopeeAds';
 import type { SheetRow } from '../../lib/types';
@@ -88,6 +95,14 @@ export interface ShopeeFunnelReport {
   conversion: ProductMetricRanking[];
   hasProductPerfCur: boolean;
   hasProductPerfOld: boolean;
+  // Product Analysis charts: one %Change series per metric pair, plus the
+  // single-period Top 5. Keyed by pair id so the section can look one up
+  // without depending on array order.
+  productCharts: { pair: ProductChartPairDef; points: ProductPairPoint[] }[];
+  potentialProducts: PotentialProduct[];
+  // False when the export has no plain "Pengunjung Produk" column — the
+  // Visit → ATC chart says so rather than drawing a row of zero bars.
+  hasVisitorsCol: boolean;
 }
 
 function sumLiveGmv(rows: SheetRow[]): number {
@@ -116,10 +131,13 @@ export function buildShopeeFunnelReport(input: BuildShopeeFunnelReportInput): Sh
   // when the user uploaded that channel. Live GMV uses the same "Omzet
   // Penjualan" column sumLiveGmv reads.
   const produkCurSums = sumFunnelChannel(input.produkCur);
-  const channelMix: ChannelMixEntry[] = [mixEntry('produk', 'Iklan Produk', '#ee4d2d', produkCurSums.spend, produkCurSums.gmv)];
+  // Segment fills carry a white percentage label, so they are the platform hues
+  // one step darker: #ee4d2d and #0d9488 put white at 3.66:1 and 3.74:1, which
+  // fails AA at the 11px the label renders at.
+  const channelMix: ChannelMixEntry[] = [mixEntry('produk', 'Iklan Produk', '#c93b1c', produkCurSums.spend, produkCurSums.gmv)];
   if (input.tokoOld.length || input.tokoCur.length) {
     const t = sumFunnelChannel(input.tokoCur);
-    channelMix.push(mixEntry('toko', 'Iklan Toko', '#0d9488', t.spend, t.gmv));
+    channelMix.push(mixEntry('toko', 'Iklan Toko', '#0f766e', t.spend, t.gmv));
   }
   if (input.liveOld.length || input.liveCur.length) {
     channelMix.push(mixEntry('live', 'Iklan Live', '#7c3aed', sumFunnelChannel(input.liveCur).spend, liveCurGmv));
@@ -154,5 +172,8 @@ export function buildShopeeFunnelReport(input: BuildShopeeFunnelReportInput): Sh
     conversion: buildProductRankings(perfOld, perfCur, CONVERSION_METRIC_DEFS),
     hasProductPerfCur: perfCur.length > 0,
     hasProductPerfOld: perfOld.length > 0,
+    productCharts: PRODUCT_CHART_PAIRS.map((pair) => ({ pair, points: buildProductPairChange(perfOld, perfCur, pair) })),
+    potentialProducts: buildPotentialProducts(perfCur, 5),
+    hasVisitorsCol: input.productPerfCur ? hasVisitorsCol(input.productPerfCur) : false,
   };
 }

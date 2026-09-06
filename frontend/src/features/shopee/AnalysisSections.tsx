@@ -180,6 +180,7 @@ function OverallAdsTable({ values, p1, p2 }: { values: FunnelValueRow[]; p1: str
       <div className="fa-overall-head">
         Overall Ads <span className="sec-badge">3 metrik utama</span>
       </div>
+      <div className="tbl-scroll">
       <table className="kpi-table fa-overall-table">
         <thead>
           <tr>
@@ -202,6 +203,7 @@ function OverallAdsTable({ values, p1, p2 }: { values: FunnelValueRow[]; p1: str
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

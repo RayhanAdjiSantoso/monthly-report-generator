@@ -13,8 +13,10 @@ export interface ReportPage {
 // indicator that glides between tabs. Only the active page is on screen; a
 // PDF/PNG export force-shows every page (see .pdf-export-mode in shell.css +
 // exportImage.ts getReportBlocks). With ≤1 visible page it renders flat.
-// `accent` colours the active tab (defaults to the Shopee orange).
-export function ReportPages({ pages, accent }: { pages: ReportPage[]; accent?: string }) {
+// `accent` colours the active tab's dot and pill; `accentInk` is the same
+// identity one step darker, for the label text — a saturated platform hue on
+// the white pill lands around 3.6:1, under AA. Falls back to `accent`.
+export function ReportPages({ pages, accent, accentInk }: { pages: ReportPage[]; accent?: string; accentInk?: string }) {
   const visible = pages.filter((p) => !p.hidden);
   const [active, setActive] = useState(visible[0]?.id);
   const current = visible.some((p) => p.id === active) ? (active as string) : visible[0]?.id;
@@ -58,7 +60,11 @@ export function ReportPages({ pages, accent }: { pages: ReportPage[]; accent?: s
         ref={barRef}
         className={`report-tabs${stuck ? ' is-stuck' : ''}`}
         role="tablist"
-        style={accent ? ({ '--rt-accent': accent } as CSSProperties) : undefined}
+        style={
+          accent
+            ? ({ '--rt-accent': accent, ...(accentInk ? { '--rt-accent-ink': accentInk } : {}) } as CSSProperties)
+            : undefined
+        }
       >
         {pill && <span className="report-tab-pill" style={{ transform: `translateX(${pill.x}px)`, width: pill.w }} />}
         {visible.map((p, i) => (

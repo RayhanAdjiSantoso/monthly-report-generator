@@ -7,6 +7,7 @@ import type { DailyTrendMetricSelection } from '../../lib/shopeeDeepDiveInsights
 import type { MetricSelection } from '../../lib/shopeeDeepDiveItemPivot';
 import { ChannelPivotSection, DailyTrendSection, ItemPivotSection, TingkatkanDenganIklanTable, UnadvertisedProductsTable, UncategorizedPanel } from './DeepDiveSections';
 import { FundamentalAnalysisSection, ParetoAnalysisSection, ProductRankingSection } from './AnalysisSections';
+import { ParetoChartSection, PotentialProductsSection, ProductChangeChartSection } from './ProductAnalysisCharts';
 import { ChannelContributionSection } from './ChannelContributionSection';
 import type { ShopeeDeepDiveReport } from './shopeeDeepDiveReport';
 import type { ShopeeFunnelReport } from './shopeeFunnelReport';
@@ -120,6 +121,32 @@ export function ShopeeReportSections({
       ),
     },
     {
+      id: 'product-analysis',
+      label: 'Product Analysis',
+      // Charts only. The tables for the same products live in "Analisis
+      // Produk" next door — this tab answers "which few moved / which few
+      // earn", that one answers "what exactly did every product do".
+      hidden: !funnelReport,
+      content: funnelReport ? (
+        <>
+          {funnelReport.productCharts.map(({ pair, points }) => (
+            <ProductChangeChartSection
+              key={pair.id}
+              pair={pair}
+              points={points}
+              hasCur={funnelReport.hasProductPerfCur}
+              hasOld={funnelReport.hasProductPerfOld}
+              missingVisitorsCol={!funnelReport.hasVisitorsCol}
+              p1={report.p1}
+              p2={report.p2}
+            />
+          ))}
+          <ParetoChartSection rows={funnelReport.pareto} hasData={funnelReport.hasProductPerfCur} periodLabel={report.p2} />
+          <PotentialProductsSection products={funnelReport.potentialProducts} hasData={funnelReport.hasProductPerfCur} periodLabel={report.p2} />
+        </>
+      ) : null,
+    },
+    {
       id: 'produk',
       label: 'Analisis Produk',
       content: (
@@ -178,7 +205,7 @@ export function ShopeeReportSections({
   return (
     <>
       <PeriodWarningBanner message={report.periodWarning} />
-      <ReportPages pages={pages} accent="var(--shopee)" />
+      <ReportPages pages={pages} accent="var(--shopee)" accentInk="var(--shopee-700)" />
     </>
   );
 }

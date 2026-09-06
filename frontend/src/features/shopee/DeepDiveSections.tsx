@@ -785,7 +785,25 @@ export function DailyTrendSection({
   p2: string;
 }) {
   const [overrides, setOverrides] = useState<Record<string, string>>({});
-  if (!rows.length) return null;
+  // Without Product Overview there is no daily series to pivot. Say that
+  // instead of returning null — this section owns a whole report tab, and an
+  // empty tab reads as a broken app rather than a missing file. No export
+  // buttons here either: an empty section must not be downloadable into a
+  // client deck.
+  if (!rows.length) {
+    return (
+      <div className="sec-block">
+        <div className="sec-heading shopee-heading">
+          Tren Harian Toko <span className="sec-badge">Product Overview</span>
+        </div>
+        <div style={{ padding: '.6rem 1.4rem 1.4rem' }}>
+          <div className="empty-note">
+            Belum ada data harian. Upload file <strong>Product Overview</strong> pada bagian “Data tambahan” di form di atas untuk melihat tren per hari.
+          </div>
+        </div>
+      </div>
+    );
+  }
   const allSelections: DailyTrendMetricSelection[] = DAILY_TREND_BUILTIN_METRICS.map((m) => ({ kind: 'builtin', key: m.key }));
   const byId = new Map(allSelections.map((s) => [dailyTrendSelectionId(s), s]));
 

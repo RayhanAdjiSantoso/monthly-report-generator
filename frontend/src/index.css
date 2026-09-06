@@ -11,7 +11,10 @@
      --page-x is the breathing room on the page edges — deliberately small so
      content uses the full width instead of sitting in a narrow centered
      column. */
-  --nav-h:66px;--gen-rail-h:58px;
+  /* Full footprint of the floating header pill: its own height plus the 10px
+     of air above and below it. Everything that clears the header — the report
+     tab bar's sticky offset, the accordion's scroll target — reads this. */
+  --nav-h:78px;--gen-rail-h:58px;
   --page-x:clamp(18px,4.5vw,64px);
   --content-max:1320px;
   --gen-main-max:1180px;
@@ -34,10 +37,19 @@
 
   /* Semantic delta color — deliberately separate from the platform accents
      above: this is a universal good/bad signal, not a brand. */
-  --good:#16a34a;--good-100:#eefcf2;
-  --bad:#dc2626;--bad-100:#fef1f0;
+  /* Shade darkened (was #16a34a / #dc2626) so the delta pill — the most
+     repeated element in the product, and the one the client reads in the
+     exported PDF — clears AA on its own wash: 3.11:1 -> 4.74:1 for gain,
+     4.39:1 -> 5.21:1 for loss. Still the same green and red. */
+  --good:#15803d;--good-100:#eefcf2;
+  --bad:#c81e1e;--bad-100:#fef1f0;
 
-  --text:#0f1a3a;--muted:#6b7a9e;--muted2:#a0aec0;
+  /* Three text tiers, all AA on white (17.5 / 5.4 / 4.6). --muted and
+     --muted2 were #6b7a9e / #a0aec0 and measured 4.28:1 and 2.26:1 — the
+     second failed AA everywhere it appeared, including placeholder text and
+     the row counts on upload cards. Darkening compresses the tiers visually;
+     the third tier now separates by size and weight more than by value. */
+  --text:#0f1a3a;--muted:#5a6a90;--muted2:#61708f;
   --f:'Inter',system-ui,sans-serif;
   --shadow:0 1px 2px rgba(15,26,58,.04),0 8px 28px rgba(15,26,58,.06);
   --shadow-sm:0 1px 2px rgba(15,26,58,.05),0 3px 10px rgba(15,26,58,.04);
@@ -75,7 +87,7 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .ptab{display:flex;align-items:center;gap:8px;padding:.55rem 1.1rem;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .18s;color:var(--muted);box-shadow:var(--shadow-sm)}
 .ptab:hover{border-color:var(--acc);color:var(--acc);background:var(--s2)}
 .ptab.active{border-color:var(--acc);background:var(--acc-100);color:var(--acc)}
-.ptab.shopee-tab.active{border-color:var(--shopee);background:var(--shopee-100);color:var(--shopee)}
+.ptab.shopee-tab.active{border-color:var(--shopee);background:var(--shopee-100);color:var(--shopee-700)}
 .ptab.tiktok-tab.active{border-color:var(--tiktok);background:var(--tiktok-100);color:var(--tiktok)}
 .ptab.business-tab.active{border-color:var(--biz);background:var(--biz-100);color:var(--biz)}
 .ptab.summary-tab.active{border-color:var(--sum);background:var(--sum-100);color:var(--sum)}
@@ -87,7 +99,7 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .ptab.summary-tab.active .ptab-dot{background:var(--sum)}
 .ptab-badge{font-size:.6rem;font-weight:700;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:.1rem .4rem;color:var(--muted);font-variant-numeric:tabular-nums lining-nums}
 .ptab.active .ptab-badge{background:#dde4fc;border-color:var(--acc-300);color:var(--acc)}
-.ptab.shopee-tab.active .ptab-badge{background:#fde2db;border-color:var(--shopee-300);color:var(--shopee)}
+.ptab.shopee-tab.active .ptab-badge{background:#fde2db;border-color:var(--shopee-300);color:var(--shopee-700)}
 .ptab.tiktok-tab.active .ptab-badge{background:#e0e0e0;border-color:#bbb;color:var(--tiktok)}
 .ptab.business-tab.active .ptab-badge{background:#d7f4f0;border-color:#a9e6dd;color:var(--biz)}
 .ptab.summary-tab.active .ptab-badge{background:#ece3fd;border-color:#cbb6f7;color:var(--sum)}
@@ -100,7 +112,7 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .source-block{margin-bottom:1.2rem}
 .source-header{display:flex;align-items:center;gap:10px;margin-bottom:.6rem}
 .source-label{font-size:.68rem;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.1em;flex:1;display:flex;align-items:center;gap:8px}
-.source-label.shopee-label{color:var(--shopee)}
+.source-label.shopee-label{color:var(--shopee-700)}
 .source-label::after{content:'';flex:1;height:1px;background:var(--border)}
 
 /* ── Drop zones ── */
@@ -112,7 +124,7 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .dz-tag{font-size:.65rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 .dz-icon{font-size:1.5rem}
 .dz-file{font-size:.72rem;color:var(--acc);background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:.2rem .7rem;margin-top:3px;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
-.dz.shopee-dz.loaded .dz-file{color:var(--shopee);background:#fde8e4;border-color:var(--shopee-300)}
+.dz.shopee-dz.loaded .dz-file{color:var(--shopee-700);background:#fde8e4;border-color:var(--shopee-300)}
 .dz-rows{font-size:.65rem;color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums lining-nums}
 .dz-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
 .dz-grid-4{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
@@ -120,7 +132,7 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 /* ── Omzet inputs ── */
 .omzet-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1.2rem}
 .omzet-field{background:var(--surface);border-radius:12px;border:1.5px solid var(--border);padding:1rem 1.2rem;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:6px}
-.omzet-field label{font-size:.68rem;color:var(--shopee);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.omzet-field label{font-size:.68rem;color:var(--shopee-700);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
 .omzet-input-wrap{display:flex;align-items:center;gap:6px}
 .omzet-prefix{font-size:.8rem;color:var(--muted);font-weight:600}
 .omzet-input{flex:1;border:none;outline:none;font-size:1rem;font-weight:700;color:var(--text);background:transparent;min-width:0;font-variant-numeric:tabular-nums lining-nums}
@@ -142,12 +154,17 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 
 /* ── Report area ── */
 #report{margin-top:2.5rem}
-.report-top{padding:1.5rem 1.8rem;margin-top:1.5rem;margin-bottom:2rem;background:linear-gradient(120deg,var(--acc) 0%,#2f54d4 60%,#0099bb 100%);border-radius:14px;color:#fff;position:relative;overflow:hidden}
+/* The band is the report's identity surface, so it wears the report's own
+   platform colour (see #report-shopee below) instead of the product blue.
+   Stops are declared as tokens with the Meta-blue values as the fallback, and
+   every platform's set has to keep white text at AA — which is why Shopee's
+   band is the deep end of its palette: white on #ff6b4a is 2.8:1. */
+.report-top{padding:1.5rem 1.8rem;margin-top:1.5rem;margin-bottom:2rem;background:linear-gradient(120deg,var(--band-a,var(--acc)) 0%,var(--band-b,#2f54d4) 60%,var(--band-c,#0099bb) 100%);border-radius:14px;color:#fff;position:relative;overflow:hidden}
 .report-top::before{content:'';position:absolute;right:-40px;top:-40px;width:200px;height:200px;background:rgba(255,255,255,.05);border-radius:50%}
 .report-top::after{content:'';position:absolute;right:60px;bottom:-60px;width:150px;height:150px;background:rgba(0,229,200,.07);border-radius:50%}
 .report-title{font-size:1.35rem;font-weight:800;letter-spacing:-.02em;color:#fff;position:relative}
 .report-period{font-size:.95rem;font-weight:700;color:var(--gold);margin-top:.4rem;position:relative;font-variant-numeric:tabular-nums lining-nums}
-.report-meta{font-size:.72rem;color:rgba(255,255,255,.65);margin-top:.3rem;position:relative;font-variant-numeric:tabular-nums lining-nums}
+.report-meta{font-size:.72rem;color:rgba(255,255,255,.88);margin-top:.3rem;position:relative;font-variant-numeric:tabular-nums lining-nums}
 
 /* ── Section shortcut nav ── */
 /* Sticky bar of shortcuts to a report's primary sections. Sits between
@@ -170,7 +187,7 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .sec-block{margin-bottom:1.8rem;background:var(--surface);border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;scroll-margin-top:64px}
 .sec-inner{padding:1rem 1.4rem 1.4rem}
 .sec-heading{font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:10px;padding:.9rem 1.4rem;border-bottom:1px solid var(--border);background:var(--s2);color:var(--acc)}
-.sec-heading.shopee-heading{color:var(--shopee)}
+.sec-heading.shopee-heading{color:var(--shopee-700)}
 .sec-heading.tiktok-heading{color:var(--tiktok)}
 .sec-heading.business-heading{color:var(--biz)}
 .sec-heading.summary-heading{color:var(--sum)}
@@ -378,7 +395,7 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .period-input-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem}
 .period-input-field{background:var(--surface);border-radius:10px;border:1.5px solid var(--border);padding:.7rem 1rem;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:4px}
 .period-input-field label{font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
-.period-input-field.shopee-period label{color:var(--shopee)}
+.period-input-field.shopee-period label{color:var(--shopee-700)}
 .period-input-field.tiktok-period label{color:var(--tiktok)}
 .period-text-input{border:none;outline:none;font-size:.88rem;font-weight:700;color:var(--text);background:transparent;width:100%}
 .period-text-input::placeholder{color:var(--muted2);font-weight:400;font-size:.82rem}
@@ -423,7 +440,7 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .howto-cols{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:.6rem}
 .howto-col-block{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem}
 .howto-col-title{font-size:.68rem;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem}
-.howto-col-title.shopee-col{color:var(--shopee)}
+.howto-col-title.shopee-col{color:var(--shopee-700)}
 .howto-col-list{list-style:none;display:flex;flex-direction:column;gap:3px}
 .howto-col-list li{font-size:.72rem;color:var(--muted);display:flex;align-items:baseline;gap:6px;line-height:1.4}
 .howto-col-list li::before{content:'·';color:var(--muted2);flex-shrink:0}
@@ -551,9 +568,9 @@ h1{font-size:1.35rem;font-weight:700;letter-spacing:-.025em;color:var(--text)}
 .compare-chip .cc-old{color:var(--muted);font-weight:500}
 .compare-chip .cc-arrow{color:var(--muted2)}
 .compare-chip .cc-cur{color:var(--chip-accent);font-weight:800;font-size:1.02em}
-.compare-chip.on-brand .cc-old{color:rgba(255,255,255,.7)}
-.compare-chip.on-brand .cc-arrow{color:rgba(255,255,255,.45)}
-.compare-chip.on-brand .cc-cur{color:var(--gold)}
+.compare-chip.on-brand .cc-old{color:rgba(255,255,255,.82)}
+.compare-chip.on-brand .cc-arrow{color:rgba(255,255,255,.86)}
+.compare-chip.on-brand .cc-cur{color:#fff}
 
 /* ── Inline notice — replaces window.alert() for validation/empty/error
    feedback: explains what's wrong and what to do next, inline in context. ── */

@@ -19,9 +19,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const onReports = path === '/generate/reports';
   // Generator pages use a wider content frame — align the header to it.
   const wideFrame = path.startsWith('/generate');
-  // On the home page (until scroll) and the login screen the header rides
-  // transparent over the background.
-  const transparentTop = (path === '/' && !scrolled) || onLogin;
+  // Only the login screen rides transparent now. The home page's masthead is
+  // a contained blue band with white page around it, so a transparent header
+  // over it would put dark nav text on dark blue.
+  const transparentTop = onLogin;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
@@ -46,9 +47,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const initial = (user?.name || user?.email || '?').charAt(0).toUpperCase();
 
+  // The login screen owns its own brand lockup and has nothing to navigate
+  // to, so it gets no header at all rather than an empty one with a second
+  // copy of the logo in it.
+  if (onLogin) return <main className="site-main">{children}</main>;
+
   return (
     <>
       <header className={`site-header${scrolled ? ' scrolled' : ''}${transparentTop ? ' transparent-top' : ''}${wideFrame ? ' wide-frame' : ''}`}>
+        {/* The bar is a floating pill rather than a full-width band: it sits on
+            the page instead of capping it. The header element itself stays
+            transparent and only lays down a soft veil once the page scrolls,
+            so content passing underneath is muted rather than cut by an edge. */}
         <div className="site-header-inner bleed">
           <Link to="/" className="site-brand">
             <img src="/mil-logo.png" alt="MIL Digital" className="site-brand-logo" width={40} height={40} />
@@ -82,9 +92,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {menuOpen && (
                   <div className="site-user-menu" role="menu">
                     <div className="site-user-email">{user.email}</div>
-                    <Link to="/generate/brands" className="site-user-item" role="menuitem">
-                      Pengaturan Brand
-                    </Link>
+                    {/* Pengaturan Brand moved to the report rail, next to
+                        Summary Overview — a destination hidden in an account
+                        menu is a destination nobody finds. */}
                     <button type="button" className="site-user-item danger" role="menuitem" onClick={() => logout()}>
                       Keluar
                     </button>

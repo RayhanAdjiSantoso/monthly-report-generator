@@ -15,3 +15,7 @@ Thumbs.db
 .claude/skills/impeccable/
 .claude/agents/impeccable-*
 .claude/settings.local.json
+
+# Impeccable critique run snapshots — session output, not a project artifact.
+# DESIGN.md and .impeccable/design.json ARE committed.
+.impeccable/critique/

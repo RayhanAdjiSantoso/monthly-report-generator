@@ -1,0 +1,608 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-06T11:22:26.000Z",
+  "title": "Design System: MIL Digital Monthly Report Generator",
+  "extensions": {
+    "colorMeta": {
+      "instrument-blue": {
+        "role": "primary",
+        "displayName": "Deep Instrument Blue",
+        "canonical": "#1e3eb8",
+        "tonalRamp": [
+          "oklch(15% 0.09 267)",
+          "oklch(23% 0.13 267)",
+          "oklch(31% 0.17 267)",
+          "oklch(38% 0.19 267)",
+          "oklch(50% 0.17 267)",
+          "oklch(64% 0.13 267)",
+          "oklch(80% 0.08 267)",
+          "oklch(95% 0.03 267)"
+        ]
+      },
+      "instrument-blue-lift": {
+        "role": "primary",
+        "displayName": "Lifted Instrument Blue",
+        "canonical": "#2f54d4",
+        "tonalRamp": [
+          "oklch(16% 0.09 266)",
+          "oklch(25% 0.14 266)",
+          "oklch(34% 0.18 266)",
+          "oklch(44% 0.20 266)",
+          "oklch(55% 0.18 266)",
+          "oklch(69% 0.13 266)",
+          "oklch(83% 0.07 266)",
+          "oklch(96% 0.025 266)"
+        ]
+      },
+      "signal-cyan": {
+        "role": "tertiary",
+        "displayName": "Signal Cyan",
+        "canonical": "#00c2e0",
+        "tonalRamp": [
+          "oklch(18% 0.05 220)",
+          "oklch(29% 0.07 220)",
+          "oklch(40% 0.09 220)",
+          "oklch(52% 0.11 220)",
+          "oklch(64% 0.12 220)",
+          "oklch(74% 0.13 220)",
+          "oklch(86% 0.08 220)",
+          "oklch(96% 0.03 220)"
+        ]
+      },
+      "signal-gold": {
+        "role": "tertiary",
+        "displayName": "Signal Gold",
+        "canonical": "#f5a623",
+        "tonalRamp": [
+          "oklch(20% 0.06 72)",
+          "oklch(32% 0.09 72)",
+          "oklch(44% 0.12 72)",
+          "oklch(56% 0.14 72)",
+          "oklch(68% 0.15 72)",
+          "oklch(78% 0.14 72)",
+          "oklch(88% 0.08 72)",
+          "oklch(96% 0.03 72)"
+        ]
+      },
+      "shopee-orange": {
+        "role": "secondary",
+        "displayName": "Shopee Orange",
+        "canonical": "#ee4d2d",
+        "tonalRamp": [
+          "oklch(15% 0.07 33)",
+          "oklch(26% 0.11 33)",
+          "oklch(38% 0.15 33)",
+          "oklch(50% 0.19 33)",
+          "oklch(63% 0.20 33)",
+          "oklch(74% 0.14 33)",
+          "oklch(85% 0.08 33)",
+          "oklch(95% 0.03 33)"
+        ]
+      },
+      "tiktok-ink": {
+        "role": "secondary",
+        "displayName": "TikTok Ink",
+        "canonical": "#0a0a0a",
+        "tonalRamp": [
+          "oklch(12% 0 0)",
+          "oklch(20% 0 0)",
+          "oklch(30% 0 0)",
+          "oklch(42% 0 0)",
+          "oklch(55% 0 0)",
+          "oklch(70% 0 0)",
+          "oklch(85% 0 0)",
+          "oklch(96% 0 0)"
+        ]
+      },
+      "tiktok-cyan": {
+        "role": "secondary",
+        "displayName": "TikTok Cyan",
+        "canonical": "#69c9d0",
+        "tonalRamp": [
+          "oklch(18% 0.04 205)",
+          "oklch(29% 0.055 205)",
+          "oklch(40% 0.07 205)",
+          "oklch(52% 0.08 205)",
+          "oklch(64% 0.085 205)",
+          "oklch(77% 0.07 205)",
+          "oklch(88% 0.045 205)",
+          "oklch(96% 0.02 205)"
+        ]
+      },
+      "business-teal": {
+        "role": "secondary",
+        "displayName": "Business Teal",
+        "canonical": "#0d9488",
+        "tonalRamp": [
+          "oklch(15% 0.04 182)",
+          "oklch(25% 0.06 182)",
+          "oklch(35% 0.08 182)",
+          "oklch(46% 0.09 182)",
+          "oklch(58% 0.10 182)",
+          "oklch(72% 0.08 182)",
+          "oklch(86% 0.05 182)",
+          "oklch(96% 0.02 182)"
+        ]
+      },
+      "summary-violet": {
+        "role": "secondary",
+        "displayName": "Summary Violet",
+        "canonical": "#7c3aed",
+        "tonalRamp": [
+          "oklch(15% 0.10 296)",
+          "oklch(24% 0.15 296)",
+          "oklch(33% 0.20 296)",
+          "oklch(43% 0.24 296)",
+          "oklch(53% 0.25 296)",
+          "oklch(68% 0.18 296)",
+          "oklch(82% 0.10 296)",
+          "oklch(95% 0.04 296)"
+        ]
+      },
+      "gain-green": {
+        "role": "tertiary",
+        "displayName": "Gain Green",
+        "canonical": "#15803d",
+        "tonalRamp": [
+          "oklch(15% 0.06 148)",
+          "oklch(25% 0.09 148)",
+          "oklch(35% 0.12 148)",
+          "oklch(45% 0.14 148)",
+          "oklch(53% 0.15 148)",
+          "oklch(68% 0.13 148)",
+          "oklch(83% 0.08 148)",
+          "oklch(95% 0.03 148)"
+        ]
+      },
+      "loss-red": {
+        "role": "tertiary",
+        "displayName": "Loss Red",
+        "canonical": "#c81e1e",
+        "tonalRamp": [
+          "oklch(15% 0.08 27)",
+          "oklch(24% 0.12 27)",
+          "oklch(33% 0.16 27)",
+          "oklch(43% 0.19 27)",
+          "oklch(52% 0.20 27)",
+          "oklch(68% 0.16 27)",
+          "oklch(83% 0.09 27)",
+          "oklch(95% 0.03 27)"
+        ]
+      },
+      "midnight-ink": {
+        "role": "neutral",
+        "displayName": "Midnight Ink",
+        "canonical": "#0f1a3a",
+        "tonalRamp": [
+          "oklch(15% 0.05 265)",
+          "oklch(22% 0.06 265)",
+          "oklch(32% 0.06 265)",
+          "oklch(44% 0.05 265)",
+          "oklch(56% 0.045 265)",
+          "oklch(70% 0.035 265)",
+          "oklch(84% 0.02 265)",
+          "oklch(96% 0.008 265)"
+        ]
+      },
+      "slate-reading-gray": {
+        "role": "neutral",
+        "displayName": "Slate Reading Gray",
+        "canonical": "#5a6a90",
+        "tonalRamp": [
+          "oklch(18% 0.03 262)",
+          "oklch(29% 0.04 262)",
+          "oklch(40% 0.045 262)",
+          "oklch(52% 0.05 262)",
+          "oklch(64% 0.045 262)",
+          "oklch(76% 0.035 262)",
+          "oklch(87% 0.02 262)",
+          "oklch(96% 0.008 262)"
+        ]
+      },
+      "quiet-gray": {
+        "role": "neutral",
+        "displayName": "Quiet Gray",
+        "canonical": "#61708f",
+        "tonalRamp": [
+          "oklch(20% 0.02 250)",
+          "oklch(31% 0.025 250)",
+          "oklch(42% 0.03 250)",
+          "oklch(54% 0.032 250)",
+          "oklch(66% 0.03 250)",
+          "oklch(77% 0.025 250)",
+          "oklch(88% 0.015 250)",
+          "oklch(97% 0.006 250)"
+        ]
+      },
+      "cold-paper": {
+        "role": "neutral",
+        "displayName": "Cold Paper",
+        "canonical": "#fbfcfe",
+        "tonalRamp": [
+          "oklch(15% 0.01 265)",
+          "oklch(28% 0.012 265)",
+          "oklch(42% 0.014 265)",
+          "oklch(56% 0.014 265)",
+          "oklch(70% 0.012 265)",
+          "oklch(83% 0.01 265)",
+          "oklch(93% 0.006 265)",
+          "oklch(99% 0.003 265)"
+        ]
+      },
+      "bench-gray": {
+        "role": "neutral",
+        "displayName": "Bench Gray",
+        "canonical": "#eef1f7",
+        "tonalRamp": [
+          "oklch(17% 0.012 265)",
+          "oklch(29% 0.014 265)",
+          "oklch(42% 0.016 265)",
+          "oklch(56% 0.016 265)",
+          "oklch(70% 0.014 265)",
+          "oklch(83% 0.012 265)",
+          "oklch(94% 0.008 265)",
+          "oklch(98% 0.004 265)"
+        ]
+      },
+      "hairline-gray": {
+        "role": "neutral",
+        "displayName": "Hairline Gray",
+        "canonical": "#dde2ee",
+        "tonalRamp": [
+          "oklch(17% 0.015 262)",
+          "oklch(29% 0.018 262)",
+          "oklch(42% 0.02 262)",
+          "oklch(56% 0.022 262)",
+          "oklch(70% 0.02 262)",
+          "oklch(82% 0.016 262)",
+          "oklch(91% 0.012 262)",
+          "oklch(97% 0.006 262)"
+        ]
+      },
+      "bench-white": {
+        "role": "neutral",
+        "displayName": "Bench White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(28% 0 0)",
+          "oklch(42% 0 0)",
+          "oklch(56% 0 0)",
+          "oklch(70% 0 0)",
+          "oklch(83% 0 0)",
+          "oklch(93% 0 0)",
+          "oklch(100% 0 0)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Home page headline and section-opening statements. One per screen."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Generator page title — sets the working context, then gets out of the way."
+      },
+      "title": {
+        "displayName": "Section Title",
+        "purpose": "The .sec-heading label on every report card. Raised from .88rem so stacked tables read as separate documents."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Table cells, paragraph copy, option rows. First table column runs at 600 so the metric name reads as a label."
+      },
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "Every figure in the product. Never rendered without tabular lining figures."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase micro-chrome: table headers, period tags, badges, tree column heads."
+      }
+    },
+    "shadows": [
+      {
+        "name": "resting-card",
+        "value": "0 1px 2px rgba(15,26,58,.04), 0 8px 28px rgba(15,26,58,.06)",
+        "purpose": "Section cards and panels at rest on the page ground. Exposed as --shadow."
+      },
+      {
+        "name": "low-ambient",
+        "value": "0 1px 2px rgba(15,26,58,.05), 0 3px 10px rgba(15,26,58,.04)",
+        "purpose": "Small interactive surfaces — upload cards at rest, compact controls. Exposed as --shadow-sm."
+      },
+      {
+        "name": "open-section",
+        "value": "0 2px 6px rgba(15,26,58,.05), 0 16px 40px rgba(15,26,58,.09)",
+        "purpose": "The single expanded accordion card. Never worn by two surfaces at once."
+      },
+      {
+        "name": "feature-card",
+        "value": "0 1px 2px rgba(15,26,58,.04), 0 14px 34px rgba(15,26,58,.06), inset 0 1px 0 rgba(255,255,255,.6)",
+        "purpose": "Home page platform cards. The inset white top edge is what makes them read as physical."
+      },
+      {
+        "name": "popup",
+        "value": "0 16px 44px rgba(15,26,58,.16), 0 2px 8px rgba(15,26,58,.05)",
+        "purpose": "Select dropdowns and the user menu — the one place a visibly dark cast is allowed."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 3px rgba(30,62,184,.12)",
+        "purpose": "The universal focus halo on every control. Exposed as --ring. Never a depth cue."
+      },
+      {
+        "name": "sticky-rail-lip",
+        "value": "0 1px 16px rgba(15,26,58,.045)",
+        "purpose": "The faint spill under the sticky report rail that proves content passes beneath it."
+      },
+      {
+        "name": "primary-button",
+        "value": "0 2px 8px rgba(30,62,184,.3)",
+        "purpose": "Accent-tinted lift under the primary button; deepens to 0 4px 14px rgba(30,62,184,.35) on hover."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(.22,1,.36,1)",
+        "purpose": "The only easing curve in the system. Exposed as --ease-out."
+      },
+      {
+        "name": "duration-state",
+        "value": "160ms–220ms",
+        "purpose": "Hover, focus, border, and colour state changes."
+      },
+      {
+        "name": "duration-reveal",
+        "value": "260ms–420ms",
+        "purpose": "Layout and reveal: accordion max-height (420ms), section entrance (450ms), tree branch growth (340ms)."
+      },
+      {
+        "name": "duration-popup",
+        "value": "160ms",
+        "purpose": "Dropdown entrance — translateY(-6px) scale(.98) → none."
+      },
+      {
+        "name": "tree-cascade-step",
+        "value": "58ms",
+        "purpose": "Per-node delay as the symptom tree draws itself in document order. Exposed as --st-step."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "@media (prefers-reduced-motion: reduce)",
+        "purpose": "Every keyframe in the system has a reduce escape. A new animation without one is a regression."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "split-collapse",
+        "value": "1180px"
+      },
+      {
+        "name": "illustration-drop",
+        "value": "1120px"
+      },
+      {
+        "name": "head-reflow",
+        "value": "920px"
+      },
+      {
+        "name": "hero-unlock",
+        "value": "820px"
+      },
+      {
+        "name": "stepper-stack",
+        "value": "760px"
+      },
+      {
+        "name": "upload-stack",
+        "value": "680px"
+      },
+      {
+        "name": "chrome-compact",
+        "value": "640px"
+      },
+      {
+        "name": "header-compact",
+        "value": "620px"
+      },
+      {
+        "name": "narrow",
+        "value": "560px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The page's main verb — Generate, Save, Login. One per screen.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Generate Laporan</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: .65rem 1.5rem; border-radius: 9px; font-family: 'Inter', system-ui, sans-serif; font-size: .88rem; font-weight: 700; letter-spacing: -.01em; cursor: pointer; border: none; text-decoration: none; transition: all .18s; } .ds-btn-primary { background: linear-gradient(135deg, #1e3eb8, #2f54d4); color: #fff; box-shadow: 0 2px 8px rgba(30,62,184,.3); } .ds-btn-primary:hover { background: linear-gradient(135deg, #2f54d4, #1a8fb0); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(30,62,184,.35); } .ds-btn-primary:focus-visible { outline: 2px solid #1e3eb8; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: .5; cursor: default; transform: none; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Every action that is not the page's main verb.",
+      "html": "<button class=\"ds-btn ds-btn-ghost\">Reset</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: .65rem 1.5rem; border-radius: 9px; font-family: 'Inter', system-ui, sans-serif; font-size: .88rem; font-weight: 700; letter-spacing: -.01em; cursor: pointer; background: #fff; color: #5a6a90; border: 1.5px solid #dde2ee; transition: all .18s; } .ds-btn-ghost:hover { color: #1e3eb8; border-color: #1e3eb8; background: #eef1f7; } .ds-btn-ghost:focus-visible { outline: 2px solid #1e3eb8; outline-offset: 2px; }"
+    },
+    {
+      "name": "Search Select",
+      "kind": "input",
+      "refersTo": "select-trigger",
+      "description": "The searchable dropdown used for client, industry, and objective. Quiet until addressed.",
+      "html": "<div class=\"ds-ssel\"><button class=\"ds-ssel-trigger\"><span>Bartega</span><span class=\"ds-ssel-caret\">▾</span></button></div>",
+      "css": ".ds-ssel { position: relative; min-width: min(260px, 100%); } .ds-ssel-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-family: 'Inter', system-ui, sans-serif; font-size: .86rem; font-weight: 600; color: #0f1a3a; padding: .55rem .8rem; border-radius: 10px; border: 1.5px solid #dde2ee; background: #fff; cursor: pointer; transition: border-color .16s, box-shadow .16s; } .ds-ssel-trigger:hover { border-color: #b8c5f5; } .ds-ssel-trigger:focus-visible, .ds-ssel-trigger:active { outline: none; border-color: #1e3eb8; box-shadow: 0 0 0 3px rgba(30,62,184,.12); } .ds-ssel-caret { font-size: .62rem; color: #61708f; transition: transform .2s cubic-bezier(.22,1,.36,1); }"
+    },
+    {
+      "name": "Upload Dropzone",
+      "kind": "custom",
+      "refersTo": "dropzone",
+      "description": "A compact horizontal upload card — never full width. Three-tier text stack, circular icon tile, dashed until a file lands.",
+      "html": "<label class=\"ds-dz\"><span class=\"ds-dz-icon\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 16V4\"/><path d=\"M7 9l5-5 5 5\"/><path d=\"M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2\"/></svg></span><span class=\"ds-dz-main\"><span class=\"ds-dz-tag\">Periode Ini</span><span class=\"ds-dz-hint\">Klik atau tarik file ke sini</span><span class=\"ds-dz-sub\">Pilih file dari perangkat Anda</span></span></label>",
+      "css": ".ds-dz { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; text-align: left; gap: .8rem; padding: .85rem .95rem; max-width: 340px; border: 1.5px dashed #dde2ee; border-radius: 14px; background: #fff; box-shadow: 0 1px 2px rgba(15,26,58,.05), 0 3px 10px rgba(15,26,58,.04); cursor: pointer; font-family: 'Inter', system-ui, sans-serif; transition: border-color .2s cubic-bezier(.22,1,.36,1), background .2s cubic-bezier(.22,1,.36,1), box-shadow .2s cubic-bezier(.22,1,.36,1); } .ds-dz-icon { flex-shrink: 0; width: 2.15rem; height: 2.15rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #eef1fc; color: #1e3eb8; transition: background .2s cubic-bezier(.22,1,.36,1), color .2s, transform .2s cubic-bezier(.22,1,.36,1); } .ds-dz-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; } .ds-dz-tag { font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: #61708f; } .ds-dz-hint { font-size: .8rem; font-weight: 650; color: #0f1a3a; letter-spacing: -.01em; } .ds-dz-sub { font-size: .66rem; color: #61708f; font-weight: 500; } .ds-dz:hover { border-color: #1e3eb8; background: #eef1fc; box-shadow: 0 1px 2px rgba(15,26,58,.04), 0 8px 28px rgba(15,26,58,.06); } .ds-dz:hover .ds-dz-icon { background: #1e3eb8; color: #fff; transform: scale(1.06); } .ds-dz:focus-within { outline: none; border-color: #1e3eb8; box-shadow: 0 0 0 3px rgba(30,62,184,.12); }"
+    },
+    {
+      "name": "Section Card",
+      "kind": "card",
+      "refersTo": "section-card",
+      "description": "The atom of the product — one card, one table, one exportable artifact. The 4px strip and the label colour identify the platform.",
+      "html": "<section class=\"ds-sec-block\"><header class=\"ds-sec-heading ds-shopee\">Fundamental Analysis <span class=\"ds-sec-badge\">Funnel</span></header><div class=\"ds-sec-body\">Isi tabel perbandingan periode.</div></section>",
+      "css": ".ds-sec-block { background: #fff; border: 1px solid #dde2ee; border-radius: 14px; box-shadow: 0 1px 2px rgba(15,26,58,.04), 0 8px 28px rgba(15,26,58,.06); overflow: hidden; font-family: 'Inter', system-ui, sans-serif; transition: box-shadow .3s cubic-bezier(.22,1,.36,1); } .ds-sec-heading { display: flex; align-items: center; gap: 12px; padding: 1rem 1.4rem; font-size: 1.02rem; font-weight: 800; letter-spacing: -.015em; color: #1e3eb8; border-bottom: 1px solid #dde2ee; background: linear-gradient(180deg, #eef1f7, #f4f6fb); cursor: pointer; user-select: none; } .ds-sec-heading::before { content: ''; width: 4px; height: 1.15em; border-radius: 3px; flex-shrink: 0; background: linear-gradient(180deg, #1e3eb8, #00c2e0); } .ds-sec-heading.ds-shopee { color: #a83417; } .ds-sec-heading.ds-shopee::before { background: linear-gradient(180deg, #ee4d2d, #ff6b4a); } .ds-sec-heading:hover { background: linear-gradient(180deg, #eef1f8, #e9edf6); } .ds-sec-badge { font-size: .64rem; background: #fff; border: 1px solid #dde2ee; border-radius: 5px; padding: .15rem .55rem; color: #6b7a9e; font-weight: 600; letter-spacing: .03em; } .ds-sec-body { padding: 1rem 1.4rem 1.4rem; font-size: .85rem; color: #0f1a3a; } .ds-sec-block:hover { box-shadow: 0 2px 6px rgba(15,26,58,.05), 0 16px 40px rgba(15,26,58,.09); }"
+    },
+    {
+      "name": "Delta Pill",
+      "kind": "chip",
+      "refersTo": "delta-pill-gain",
+      "description": "The most-repeated element in the product and the reason the palette stays quiet. Green and red mean one thing only: a metric moved. Both are the deep end of their hue so the pill clears AA on its own wash in the exported PDF.",
+      "html": "<span class=\"ds-delta ds-delta-gain\">▲ 24,8%</span> <span class=\"ds-delta ds-delta-loss\">▼ 11,3%</span> <span class=\"ds-delta ds-delta-flat\">— 0,0%</span>",
+      "css": ".ds-delta { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .55rem; border-radius: 999px; font-family: 'Inter', system-ui, sans-serif; font-size: .78rem; font-weight: 700; font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .ds-delta-gain { color: #15803d; background: #eefcf2; } .ds-delta-loss { color: #c81e1e; background: #fef1f0; } .ds-delta-flat { color: #5a6a90; background: #eef1f7; }"
+    },
+    {
+      "name": "Report Rail Item",
+      "kind": "nav",
+      "refersTo": "nav-rail-link",
+      "description": "Sticky glassy rail under the site header. One shared highlight pill glides between items; the icon tile inverts to the active platform's colour.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-rail-link\" href=\"#\"><span class=\"ds-rail-ico\"><svg viewBox=\"0 0 24 24\" width=\"15\" height=\"15\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\"><path d=\"M4 19V9\"/><path d=\"M10 19V5\"/><path d=\"M16 19v-7\"/><path d=\"M22 19H2\"/></svg></span>Meta Ads<span class=\"ds-rail-badge\">3</span></a><a class=\"ds-rail-link ds-active\" href=\"#\"><span class=\"ds-rail-ico\"><svg viewBox=\"0 0 24 24\" width=\"15\" height=\"15\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 7h16l-1.4 12.2a2 2 0 0 1-2 1.8H7.4a2 2 0 0 1-2-1.8Z\"/><path d=\"M9 7V5a3 3 0 0 1 6 0v2\"/></svg></span>Shopee Ads<span class=\"ds-rail-badge ds-done\"></span></a></nav>",
+      "css": ".ds-rail { display: flex; align-items: center; gap: 5px; height: 58px; padding: 0 .6rem; background: rgba(251,252,254,.86); -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%); border-top: 1px solid rgba(221,226,238,.55); border-bottom: 1px solid #dde2ee; box-shadow: 0 1px 16px rgba(15,26,58,.045); font-family: 'Inter', system-ui, sans-serif; } .ds-rail-link { position: relative; display: flex; align-items: center; gap: 9px; white-space: nowrap; padding: .5rem .8rem; border-radius: 11px; text-decoration: none; font-size: .855rem; font-weight: 640; letter-spacing: -.015em; color: #5a6a90; transition: color .22s cubic-bezier(.22,1,.36,1); } .ds-rail-ico { width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #dde2ee; color: #61708f; transition: background .22s cubic-bezier(.22,1,.36,1), color .22s, border-color .22s; } .ds-rail-link:hover:not(.ds-active) { color: #0f1a3a; } .ds-rail-link:hover:not(.ds-active) .ds-rail-ico { border-color: #1e3eb8; color: #1e3eb8; } .ds-rail-link:focus-visible { outline: 2px solid #1e3eb8; outline-offset: 2px; } .ds-rail-link.ds-active { color: #a83417; font-weight: 750; background: #fff4f2; box-shadow: 0 2px 10px rgba(15,26,58,.07), inset 0 0 0 1px rgba(15,26,58,.04); } .ds-rail-link.ds-active .ds-rail-ico { background: #ee4d2d; border-color: transparent; color: #fff; box-shadow: 0 3px 10px rgba(238,77,45,.32); } .ds-rail-badge { flex-shrink: 0; font-size: .6rem; font-weight: 800; line-height: 1; color: #61708f; background: #eef1f7; border-radius: 5px; padding: .2rem .35rem; font-variant-numeric: tabular-nums lining-nums; } .ds-rail-badge.ds-done { width: 7px; height: 7px; padding: 0; border-radius: 50%; background: #15803d; }"
+    },
+    {
+      "name": "Symptom Tree",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "The funnel decomposition drawn as a real tree. Each item owns its own vertical run — full height normally, truncated at the elbow when last — so a branch always closes cleanly. Draws itself on open, cascading at 58ms per node.",
+      "html": "<div class=\"ds-sympt-panel\"><div class=\"ds-tree\"><div class=\"ds-node ds-root\"><span class=\"ds-label\">GMV Iklan</span><span class=\"ds-vals\">Rp 84,2 jt → Rp 71,6 jt</span><span class=\"ds-delta ds-delta-loss\">▼ 15,0%</span></div><ul class=\"ds-children\"><li class=\"ds-item\" style=\"--i:1\"><div class=\"ds-node\" data-depth=\"1\"><span class=\"ds-label\">Transaction</span><span class=\"ds-vals\">612 → 498</span><span class=\"ds-delta ds-delta-loss\">▼ 18,6%</span></div><ul class=\"ds-children\"><li class=\"ds-item\" style=\"--i:2\"><div class=\"ds-node\" data-depth=\"2\"><span class=\"ds-label\">Click</span><span class=\"ds-vals\">21.400 → 19.900</span><span class=\"ds-delta ds-delta-loss\">▼ 7,0%</span></div></li><li class=\"ds-item\" style=\"--i:3\"><div class=\"ds-node\" data-depth=\"2\"><span class=\"ds-label\">Conversion Rate</span><span class=\"ds-vals\">2,86% → 2,50%</span><span class=\"ds-delta ds-delta-loss\">▼ 12,6%</span></div></li></ul></li><li class=\"ds-item\" style=\"--i:4\"><div class=\"ds-node\" data-depth=\"1\"><span class=\"ds-label\">AOV</span><span class=\"ds-vals\">Rp 137rb → Rp 144rb</span><span class=\"ds-delta ds-delta-gain\">▲ 4,4%</span></div></li></ul></div></div>",
+      "css": ".ds-sympt-panel { background: #eef1f7; border: 1px solid #dde2ee; border-radius: 14px; padding: .9rem 1.1rem 1.1rem; font-family: 'Inter', system-ui, sans-serif; } .ds-tree { --st-line: #b9c3d6; --st-node-h: 38px; --st-elbow: calc(var(--st-node-h) / 2 + .18rem); --st-indent: 18px; --st-step: 58ms; } .ds-tree ul { list-style: none; margin: 0; padding: 0; } .ds-children { position: relative; margin: 0 0 0 15px; padding: 0 0 0 var(--st-indent); } .ds-item { position: relative; } .ds-item::before { content: ''; position: absolute; left: calc(var(--st-indent) * -1); top: 0; height: 100%; width: 2px; border-radius: 2px; background: var(--st-line); transform-origin: top; animation: ds-grow-y .34s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(var(--i, 0) * var(--st-step)); } .ds-item:last-child::before { height: var(--st-elbow); } .ds-item > .ds-node::before { content: ''; position: absolute; left: calc(var(--st-indent) * -1); top: var(--st-elbow); width: var(--st-indent); height: 2px; border-radius: 2px; background: var(--st-line); transform-origin: left; animation: ds-grow-x .26s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(var(--i, 0) * var(--st-step) + 130ms); } .ds-node { position: relative; display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; min-height: var(--st-node-h); padding: .35rem .6rem; margin: .18rem 0; border-radius: 9px; background: transparent; border: 1px solid transparent; opacity: 0; transform: translateX(-8px); transition: background .16s cubic-bezier(.22,1,.36,1), border-color .16s, box-shadow .16s; animation: ds-node-in .4s cubic-bezier(.22,1,.36,1) forwards; animation-delay: calc(var(--i, 0) * var(--st-step) + 210ms); } .ds-node:hover { background: #fff; border-color: #dde2ee; } .ds-node[data-depth=\"1\"] { background: #fff; border-color: #dde2ee; } .ds-node[data-depth=\"1\"] .ds-label { font-weight: 750; } .ds-node.ds-root { min-height: 40px; padding: .5rem .75rem; margin-bottom: .3rem; background: #fff4f2; border-color: #f5b5a7; box-shadow: 0 0 0 3px rgba(238,77,45,.06); opacity: 1; transform: none; animation: none; } .ds-label { flex: 1; min-width: 0; font-size: .79rem; font-weight: 600; color: #0f1a3a; letter-spacing: -.01em; } .ds-node.ds-root .ds-label { font-weight: 800; font-size: .86rem; } .ds-vals { flex-shrink: 0; font-size: .68rem; color: #5a6a90; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums lining-nums; } .ds-node .ds-delta { flex-shrink: 0; min-width: 5.1rem; justify-content: center; display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .45rem; border-radius: 7px; font-size: .72rem; font-weight: 700; font-variant-numeric: tabular-nums lining-nums; } .ds-delta-gain { color: #15803d; background: #eefcf2; } .ds-delta-loss { color: #c81e1e; background: #fef1f0; } @keyframes ds-node-in { to { opacity: 1; transform: none; } } @keyframes ds-grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } } @keyframes ds-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } } @media (prefers-reduced-motion: reduce) { .ds-node, .ds-item::before, .ds-item > .ds-node::before { animation: none; opacity: 1; transform: none; } }"
+    },
+    {
+      "name": "Section Disclosure Toggle",
+      "kind": "button",
+      "refersTo": null,
+      "description": "The keyboard control for a report section. A transparent button laid over the heading, so the ⬇ PNG / ⬇ Excel buttons the heading already contains stay reachable instead of being nested inside a button role.",
+      "html": "<div class=\"ds-acc-item\"><button type=\"button\" class=\"ds-acc-toggle\" aria-expanded=\"true\" aria-controls=\"ds-panel-1\" aria-label=\"Fundamental Analysis\"></button><section class=\"ds-acc-block\" id=\"ds-panel-1\"><header class=\"ds-acc-heading\">Fundamental Analysis <button type=\"button\" class=\"ds-acc-dl\">⬇ PNG</button></header><div class=\"ds-acc-body\">Isi section.</div></section></div>",
+      "css": ".ds-acc-item { position: relative; font-family: 'Inter', system-ui, sans-serif; } .ds-acc-toggle { position: absolute; top: 0; left: 0; width: 100%; height: var(--ds-head-h, 56px); z-index: 1; appearance: none; border: 0; background: none; padding: 0; cursor: pointer; border-radius: 14px 14px 0 0; } .ds-acc-toggle:focus-visible { outline: 2px solid #a83417; outline-offset: -3px; } .ds-acc-block { background: #fff; border: 1px solid #dde2ee; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 6px rgba(15,26,58,.05), 0 16px 40px rgba(15,26,58,.09); } .ds-acc-heading { display: flex; align-items: center; gap: 12px; padding: 1rem 1.4rem; font-size: 1.02rem; font-weight: 800; letter-spacing: -.015em; color: #a83417; background: linear-gradient(180deg, #eef1f7, #f4f6fb); border-bottom: 1px solid #dde2ee; cursor: pointer; user-select: none; } .ds-acc-heading::before { content: ''; width: 4px; height: 1.15em; border-radius: 3px; background: linear-gradient(180deg, #ee4d2d, #ff6b4a); } .ds-acc-heading::after { content: ''; margin-left: .55rem; width: 8px; height: 8px; border-right: 2px solid #61708f; border-bottom: 2px solid #61708f; transform: rotate(-135deg) translate(-3px,-3px); transition: transform .25s cubic-bezier(.22,1,.36,1); } .ds-acc-dl { position: relative; z-index: 2; margin-left: auto; font: inherit; font-size: .62rem; font-weight: 800; color: #5a6a90; background: #fff; border: 1px solid #dde2ee; border-radius: 5px; padding: .15rem .55rem; cursor: pointer; } .ds-acc-dl:hover { color: #a83417; border-color: #a83417; } .ds-acc-body { padding: 1rem 1.4rem 1.4rem; font-size: .85rem; color: #0f1a3a; } .ds-acc-toggle:hover + .ds-acc-block > .ds-acc-heading { background: linear-gradient(180deg, #eef1f8, #e9edf6); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Analyst's Bench",
+    "overview": "This is a precision instrument laid out on a working surface, not a dashboard built to impress. The person using it is an expert under time pressure: they already know what ROAS means, they have the ad platform open in another window, and they are looking for the one figure that moved. Every pixel is answerable to that. Density beats decoration; a table that fits more rows on screen is a better table. Chrome is thin and the content is thick.\n\nThe character is precise with a modern edge. Surfaces are white and cold-paper pale, rules are hairline, type is tight and heavily weighted. But the bench is not static: the report-type rail carries a gliding highlight between reports, the symptom tree draws its own branches on open, sections expand on a single easing curve, and dropdowns land rather than appear. Motion is always a consequence of an action the user took — nothing loops, nothing floats, and nothing animates that a reader might be trying to read. The anti-reference is the dark glowing SaaS dashboard: no neon, no gradients as background, no decorative charts, and above all no invented figures. On a reporting tool an ornamental number reads as data, so it is a lie.\n\nThe second audience is invisible but decisive. The screen is not the end of the pipeline — `.sec-block` and everything inside it get captured by html2canvas and leave as a client-facing PDF. That splits the system in two: report content is conservative, export-safe, and printable, while the chrome around it (home page, header, rail, upload cards) may use the modern CSS the report cannot afford. The split is a rule, not a preference.",
+    "keyCharacteristics": [
+      "One typeface (Inter) doing every job; numbers differentiate through tabular lining figures, never through a second family.",
+      "A cold near-white ground (`#fbfcfe`) with white cards and hairline `#dde2ee` rules — the palette is quiet so the delta pills can shout.",
+      "Instrument blue owns every control the operator acts on; the platform owns every surface that says whose data this is.",
+      "Layered elevation with real meaning: page → panel → card → open card → popup, each a step closer to the reader.",
+      "Tight, high-weight type (600–800) at small sizes; hierarchy comes from weight and letter-spacing, not from size jumps.",
+      "Motion on one curve (`cubic-bezier(.22,1,.36,1)`), 160–420ms, and fully surrendered under `prefers-reduced-motion`."
+    ],
+    "rules": [
+      {
+        "name": "The Identity-vs-Action Rule",
+        "body": "The split is not page against page, it is surface against control. *Identity surfaces* — the report band, section headings, table-header underlines, row hover, the symptom-tree root, focus outlines inside a report — belong to the platform whose data is on screen. *Action controls* — primary buttons, upload dropzones, the client picker, the stepper's own chrome — stay instrument blue everywhere, on every platform. That is why a loaded Shopee dropzone is blue and not orange: a warm colour on an upload surface reads as an error the operator has not made. Meta's report looks blue because Meta *is* blue, not because blue leaked in. Implemented by scoping band and outline tokens on `#report-<platform>` rather than rescoping `--acc`, which would turn the primary button into an orange gradient whose light stop puts white at 3.66:1.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two-Signal Rule",
+        "body": "Green and red carry exactly one meaning in this system: a metric moved for the better or for the worse. They are never used for success toasts, validation, destructive actions, or category coding. If something needs to look like an error, it uses gold or a neutral treatment — never the delta pair, and never inside the upload area at all.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink-Not-Hue Rule",
+        "body": "A saturated platform hue is a fill, a border and a tint — not a text colour. Shopee orange as text measures 3.2–3.7:1 at every size the product uses it, so every orange *word* renders in Shopee Deep (`#a83417`) while every orange *surface* keeps the full-strength hue. The same test applies before introducing any new accent as type.",
+        "section": "colors"
+      },
+      {
+        "name": "The Quiet Ground Rule",
+        "body": "No screen paints a saturated background. Ground is cold paper, surfaces are white, recessed areas are bench gray. All saturation in the system belongs to controls, deltas, and platform identity — the things the eye is meant to land on.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "Inter is the only typeface in the system, on screen and in export. If something needs to look different, change weight, size, tracking, or numeric variant — never family. `code { font-family: inherit }` exists precisely to enforce this.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Figures Rule",
+        "body": "Any number a user might compare down a column carries tabular lining figures. A ROAS that shifts horizontally between rows is a defect, not a style choice.",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight-Over-Size Rule",
+        "body": "Hierarchy is built from weight (400 → 600 → 650 → 750 → 800) and tracking, because the working screens cannot afford large type. A heading two steps up in size is usually a heading that should have been two steps up in weight.",
+        "section": "typography"
+      },
+      {
+        "name": "The Own-Scroller Rule",
+        "body": "`.sec-block` clips at `overflow: hidden`, so any table that can exceed its card carries its own `.tbl-scroll` / `.fg-scroll` wrapper. Without one the overflow is not scrolled, it is destroyed — and the column that falls off the right edge is the delta, which is the report. The wrapper releases during capture so a PNG still shrink-wraps the full table.",
+        "section": "layout"
+      },
+      {
+        "name": "The Two-Bar Rule",
+        "body": "At most two bands of chrome are sticky at once, and each declares its offset from the one above it in tokens. A third level of navigation does not become sticky just because it exists; it scrolls. Any scroll-into-view measures the stack live — a number typed by hand into a `scroll-margin` will be wrong the first time the header wraps.",
+        "section": "layout"
+      },
+      {
+        "name": "The One Place Rule",
+        "body": "A destination appears in exactly one navigation level. Riwayat lived in both the site header and the report rail, and Pengaturan Brand in both the rail and the account menu; a link that appears twice in two different levels is worse than a link that appears once.",
+        "section": "layout"
+      },
+      {
+        "name": "The No-Dead-Channel Rule",
+        "body": "A comparison table never spreads its value columns evenly across the box. Values cluster right, the label column takes the slack, and if that leaves a gap wider than a column, the gap becomes a companion panel.",
+        "section": "layout"
+      },
+      {
+        "name": "The Ink Shadow Rule",
+        "body": "Shadows are tinted with the text colour (`rgba(15,26,58, …)`), never `rgba(0,0,0, …)`. A neutral-black shadow on a cold-paper ground reads as dirt.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One Open Card Rule",
+        "body": "Within a report page exactly one section is expanded at a time, and it is the only surface wearing the open-section shadow. Two cards competing at the same elevation is the state the accordion exists to prevent.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Radius Ladder Rule",
+        "body": "Radius is a function of surface size, not of taste. If two nested elements share a radius, the inner one is wrong.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Pill Reservation Rule",
+        "body": "`border-radius: 999px` means one thing: a period-over-period delta. Nothing else in the system is fully rounded.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do keep every accent, tint, hover, and heading strip inside a report card in the current platform's colour, and keep every control the operator acts on instrument blue (The Identity-vs-Action Rule).",
+      "Do render a platform hue as text in its deep shade (`--shopee-700`, not `--shopee`) and keep the full-strength hue for fills, borders and tints.",
+      "Do give any table that can outgrow its card its own `.tbl-scroll` wrapper (The Own-Scroller Rule).",
+      "Do build a disclosure control as a real `<button>` with `aria-expanded` and `aria-controls`. When the region it toggles already contains buttons, lay the control over it as a sibling rather than putting `role=\"button\"` on a container that wraps them.",
+      "Do write report-content CSS in plain tokens or hex only. Everything under `.sec-block` renders through html2canvas, which cannot parse `color-mix()` and will drop the rule silently.",
+      "Do use `color-mix()`, `backdrop-filter`, and 3D transforms freely in the chrome — the home page, header, rail, and upload cards never enter a capture.",
+      "Do exempt anything that hides content from export mode. `body.pdf-export-mode` must force collapsed sections open with `max-height: none !important` and `overflow: visible !important`; an export missing a section is a broken deliverable.",
+      "Do cluster value columns to the right at a fixed width and let the label column absorb the slack, so the metric name sits next to its numbers.",
+      "Do give every figure `font-variant-numeric: tabular-nums lining-nums`.",
+      "Do tint shadows with `rgba(15,26,58, …)`, the ink colour, never black.",
+      "Do honour `prefers-reduced-motion` on every animation. Every keyframe in this system already has a reduce-motion escape; a new one without it is a regression.",
+      "Do run all easing through `--ease-out` (`cubic-bezier(.22,1,.36,1)`) in the 160–420ms band. State changes sit at 160–220ms, layout and reveal at 260–420ms.",
+      "Do measure the sticky stack at runtime (`.gen-rail`, `.report-tabs`, `.site-header`) before scrolling anything into view."
+    ],
+    "donts": [
+      "Don't put a warm colour on an upload *control* — the dropzone's border, icon tile, or loaded state. A warm control there reads as an error the operator has not made, which is why loaded Shopee dropzones are blue. The section *label* above them may carry the platform's deep hue; the control may not.",
+      "Don't use gain green or loss red for anything except a period-over-period movement (The Two-Signal Rule).",
+      "Don't set `width: 100%` on an upload card by default. Period pairs are two compact cards centred with a `16–24px` gap; a single-file section caps at `600–700px` and centres.",
+      "Don't introduce a second typeface, including a monospace for numbers. Weight, size, tracking, and numeric variant carry all differentiation.",
+      "Don't render a number the user cannot trace to an uploaded file or a value they typed. Decorative or placeholder figures were removed from the header illustration for exactly this reason — on a reporting tool, an invented number reads as data.",
+      "Don't apply `filter` to an element using `background-clip: text` — not even `blur(0px)`. Chromium renders nothing.",
+      "Don't repurpose a platform accent as category coding. Meta blue, Shopee orange, TikTok black, Business teal, and Summary violet are semantic and binding — Summary violet marking \"client metrics\" inside a Shopee card was exactly this mistake. Groups inside one report separate by role instead: the levers wear the platform accent, the outcome reads in ink.",
+      "Don't transition `width` or `height` on chrome; animate `transform` and `opacity`, and reserve `max-height` for the accordion where it is unavoidable.",
+      "Don't let two surfaces wear the open-section shadow at once. Exactly one card is expanded per report page.",
+      "Don't ship a colour pair without measuring it. Small bold text on its own wash is the case that fails most often — the delta pill, table headers, and micro-labels all missed AA on values that looked fine.",
+      "Don't hardcode a `scroll-margin-top` or sticky offset. Read `--nav-h` and `--gen-rail-h`, or measure."
+    ]
+  }
+}
