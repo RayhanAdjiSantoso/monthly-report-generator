@@ -8,3 +8,10 @@ data/
 # OS/editor cruft
 .DS_Store
 Thumbs.db
+
+# Impeccable design skill — local tooling (~14 MB incl. a platform binary).
+# Reinstall with: npx impeccable install -y --providers=claude --scope=project
+# PRODUCT.md is the durable output and IS tracked.
+.claude/skills/impeccable/
+.claude/agents/impeccable-*
+.claude/settings.local.json
