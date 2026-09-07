@@ -652,7 +652,7 @@ export function ShopeeTab({ isActive, clientId, omzetOld, omzetCur, onOmzetOldCh
         </HowToStep>
       </HowTo>
 
-      <StepIndicator steps={steps} accent="var(--shopee)" />
+      <StepIndicator steps={steps} accent="var(--shopee-700)" />
 
       <PeriodInputRow
         colorClass="shopee-period"

@@ -158,6 +158,14 @@ export const COST_PER_MAP: { cost: string; denom: string }[] = [
   // generic path, which strips the prefix to "ig visit (idr)", finds no
   // matching count column, and shows "—".
   { cost: 'cost per ig visit', denom: 'instagram profile visit' },
+  // Meta's own export names this column "Cost per Instagram Follows (IDR)",
+  // which contains neither 'cost per follow' (the rule below) nor any other
+  // entry in this map. It then fell through to agg()'s last-resort weighted
+  // average of Meta's per-row cost values — Rp1.582 on a month where Spend ÷
+  // Follows is Rp3.213. Every other cost-per in the same table was right,
+  // because each of those does hit a rule here.
+  { cost: 'cost per instagram follow', denom: 'instagram follow' },
+  { cost: 'cost per ig follow', denom: 'instagram follow' },
   { cost: 'cost per follow', denom: 'instagram follow' },
   { cost: 'cost per messaging conversation', denom: 'messaging conversation' },
   { cost: 'cost per total message', denom: 'total message' },
